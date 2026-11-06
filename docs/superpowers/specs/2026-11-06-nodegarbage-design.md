@@ -16,6 +16,8 @@
 - Nunca apagar algo protegido nem algo que o usuário não confirmou explicitamente.
 - Funcionar 100% sem IA. A IA é opcional e acrescenta explicação e classificação dos itens desconhecidos.
 
+**Princípio inegociável:** só o usuário apaga. A IA (e as regras) apenas classificam e explicam; nenhum componente além do fluxo de confirmação do usuário (`PlanClean` → diálogo → `ExecuteClean` com token) pode disparar uma exclusão. A IA não tem acesso a nenhuma ferramenta ou binding; sua resposta é tratada como dado não confiável.
+
 **Decisões tomadas:**
 
 | Tema | Decisão |
