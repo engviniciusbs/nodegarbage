@@ -54,6 +54,11 @@ const (
 	// ReasonDuplicate: the item equals or lies inside another accepted item,
 	// which already covers it.
 	ReasonDuplicate = "duplicate"
+	// ReasonInvalidAction: Class.Action is not "", delete_dir,
+	// delete_contents or manual.
+	ReasonInvalidAction = "invalid_action"
+	// ReasonInvalidSize: the request has a negative Size.
+	ReasonInvalidSize = "invalid_size"
 )
 
 // Item warnings.

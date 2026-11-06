@@ -3,6 +3,7 @@ package cleaner
 import (
 	"errors"
 	"io/fs"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -505,5 +506,72 @@ func TestEmptyPlanHasNoToken(t *testing.T) {
 	}
 	if _, err := pl.Redeem(p.ID, p.Token); !errors.Is(err, ErrInvalidToken) {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestJunctionNamedNodeModulesIntoRepo(t *testing.T) {
+	d := newFakeDeps()
+	d.canon[`c:\p\node_modules`] = `C:\src\repo`
+	d.git[`c:\src\repo`] = true
+	pl, _ := newTestPlanner(d)
+	p, _ := pl.Plan([]Request{{Path: `C:\p\node_modules`, Size: 1, Class: clsSafeDir}}, ModePermanent, nil)
+	if got := refusalReason(p, `C:\p\node_modules`); got != ReasonContainsGit {
+		t.Fatalf("reason = %q (items %+v)", got, p.Items)
+	}
+	// Same canonical form (case/shape only): the delete_dir exception holds.
+	d.canon[`c:/q/node_modules/`] = `C:\Q\Node_Modules`
+	d.git[`c:\q\node_modules`] = true
+	p, _ = pl.Plan([]Request{{Path: `c:/q/node_modules/`, Size: 1, Class: clsSafeDir}}, ModePermanent, nil)
+	if len(p.Items) != 1 {
+		t.Fatalf("refused = %+v", p.Refused)
+	}
+}
+
+func TestCapacityOverflow(t *testing.T) {
+	d := newFakeDeps()
+	d.exist(`C:\a`, `C:\b`)
+	d.bins[`C:\`] = fakeBin{remaining: 100, has: true}
+	pl, _ := newTestPlanner(d)
+	p, _ := pl.Plan([]Request{
+		{Path: `C:\a`, Size: 60, Class: clsSafeDir},
+		{Path: `C:\b`, Size: math.MaxInt64, Class: clsSafeDir},
+	}, ModeRecycle, nil)
+	if got := refusalReason(p, `C:\b`); got != ReasonExceedsRecycleBin {
+		t.Fatalf("reason = %q (items %+v)", got, p.Items)
+	}
+	if len(p.Items) != 1 || p.TotalBytes != 60 {
+		t.Fatalf("items = %+v", p.Items)
+	}
+}
+
+func TestInvalidSize(t *testing.T) {
+	d := newFakeDeps()
+	d.exist(`C:\a`)
+	pl, _ := newTestPlanner(d)
+	p, _ := pl.Plan([]Request{{Path: `C:\a`, Size: -1, Class: clsSafeDir}}, ModePermanent, nil)
+	if got := refusalReason(p, `C:\a`); got != ReasonInvalidSize {
+		t.Fatalf("reason = %q", got)
+	}
+}
+
+func TestInvalidAction(t *testing.T) {
+	d := newFakeDeps()
+	d.exist(`C:\a`)
+	pl, _ := newTestPlanner(d)
+	cls := rules.Classification{Verdict: rules.Safe, Action: rules.Action("shred"), Source: rules.SourceAI}
+	p, _ := pl.Plan([]Request{{Path: `C:\a`, Size: 1, Class: cls}}, ModePermanent, nil)
+	if got := refusalReason(p, `C:\a`); got != ReasonInvalidAction {
+		t.Fatalf("reason = %q", got)
+	}
+	// Checked after keep/manual, before not_found.
+	cls.Verdict = rules.Keep
+	p, _ = pl.Plan([]Request{{Path: `C:\a`, Size: 1, Class: cls}}, ModePermanent, nil)
+	if got := refusalReason(p, `C:\a`); got != ReasonKeep {
+		t.Fatalf("reason = %q", got)
+	}
+	cls.Verdict = rules.Safe
+	p, _ = pl.Plan([]Request{{Path: `C:\gone`, Size: 1, Class: cls}}, ModePermanent, nil)
+	if got := refusalReason(p, `C:\gone`); got != ReasonInvalidAction {
+		t.Fatalf("reason = %q", got)
 	}
 }

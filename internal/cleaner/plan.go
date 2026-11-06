@@ -64,9 +64,11 @@ type binInfo struct {
 }
 
 // Plan validates every request, in input order, with these checks (first
-// failing check wins): keep verdict, manual action, Canonicalize (not_found),
+// failing check wins): keep verdict, manual action, unknown action
+// (invalid_action), negative size (invalid_size), Canonicalize (not_found),
 // Protector.Check on the canonical path, HasProtectedDescendant,
-// ContainsGit unless the item's own action is delete_dir, scanned volume,
+// ContainsGit unless the action is delete_dir and the canonical path is the
+// requested one (no junction/symlink in between), scanned volume,
 // and in recycle mode a usable recycle bin. Items that pass are then
 // de-duplicated (an item equal to or inside another accepted item is refused
 // as duplicate; the outer one stays) and, in recycle mode, accounted per
@@ -130,7 +132,8 @@ func (pl *Planner) Plan(reqs []Request, mode Mode, fileCount func(path string) u
 	var total int64
 	for _, c := range kept {
 		if mode == ModeRecycle {
-			if used[c.vol]+c.item.Size > bins[c.vol].remaining {
+			// used <= remaining always holds, so this cannot overflow.
+			if c.item.Size > bins[c.vol].remaining-used[c.vol] {
 				refuse(c.idx, reqs[c.idx].Path, ReasonExceedsRecycleBin)
 				continue
 			}
@@ -176,6 +179,14 @@ func (pl *Planner) check(rq Request, mode Mode, bins map[string]binInfo) (string
 	if cls.Action == rules.ActionManual {
 		return ReasonManualAction, candidate{}
 	}
+	switch cls.Action {
+	case "", rules.ActionDeleteDir, rules.ActionDeleteContents:
+	default:
+		return ReasonInvalidAction, candidate{}
+	}
+	if rq.Size < 0 {
+		return ReasonInvalidSize, candidate{}
+	}
 	canon, err := pl.deps.Canonicalize(rq.Path)
 	if err != nil || canon == "" {
 		return ReasonNotFound, candidate{}
@@ -186,7 +197,12 @@ func (pl *Planner) check(rq Request, mode Mode, bins map[string]binInfo) (string
 	if pl.prot.HasProtectedDescendant(canon) {
 		return ReasonContainsProtected, candidate{}
 	}
-	if cls.Action != rules.ActionDeleteDir && pl.deps.ContainsGit(canon) {
+	norm := rules.NormalizePath(canon)
+	sameAsRequested := norm == rules.NormalizePath(rq.Path)
+	// The delete_dir exception trusts Class, which describes the requested
+	// path: it only holds if that path is the item itself (not a junction
+	// or symlink leading elsewhere, e.g. a "node_modules" link to a repo).
+	if (cls.Action != rules.ActionDeleteDir || !sameAsRequested) && pl.deps.ContainsGit(canon) {
 		return ReasonContainsGit, candidate{}
 	}
 	vol := pl.deps.VolumeOf(canon)
@@ -208,9 +224,8 @@ func (pl *Planner) check(rq Request, mode Mode, bins map[string]binInfo) (string
 	if cls.Action == "" {
 		cls.Action = rules.ActionDeleteDir
 	}
-	norm := rules.NormalizePath(canon)
-	item := PlanItem{Path: canon, Size: max(rq.Size, 0), Class: cls}
-	if norm != rules.NormalizePath(rq.Path) {
+	item := PlanItem{Path: canon, Size: rq.Size, Class: cls}
+	if !sameAsRequested {
 		item.Warnings = append(item.Warnings, WarnCanonicalDiffers)
 	}
 	return "", candidate{norm: norm, vol: vol, item: item}
