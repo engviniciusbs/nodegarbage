@@ -1,0 +1,14 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "nodegarbage",
+  "outputfilename": "nodegarbage",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "engviniciusbs",
+    "email": "engviniciusbs@gmail.com"
+  }
+}
+
