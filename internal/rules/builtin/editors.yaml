@@ -1,0 +1,29 @@
+- id: editors.vscode_cache
+  name: Cache do VS Code
+  category: dev-cache
+  match:
+    path: '%APPDATA%\Code\Cache'
+  verdict: safe
+  regenerable: o VS Code recria ao abrir
+  action: delete_contents
+  explain: Cache de recursos do VS Code. Pode limpar com o editor fechado, ele recria tudo sozinho.
+
+- id: editors.vscode_cacheddata
+  name: CachedData do VS Code
+  category: dev-cache
+  match:
+    path: '%APPDATA%\Code\CachedData'
+  verdict: safe
+  regenerable: o VS Code recria ao abrir
+  action: delete_contents
+  explain: Código JavaScript pré-compilado do VS Code. É regenerado na próxima abertura, que pode ficar um pouco mais lenta.
+
+- id: editors.jetbrains_cache
+  name: Caches das IDEs JetBrains
+  category: dev-cache
+  match:
+    path: '%LOCALAPPDATA%\JetBrains'
+  verdict: caution
+  regenerable: a IDE reindexa ao abrir o projeto
+  action: delete_dir
+  explain: Índices e caches de IntelliJ, Rider, PyCharm e afins. Apagar força a reindexação dos projetos e pode descartar logs e alguns ajustes locais, então feche as IDEs antes.

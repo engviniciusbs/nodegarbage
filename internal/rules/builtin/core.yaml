@@ -1,3 +1,0 @@
-# Built-in rules are added in Task 7 as per-ecosystem files in this directory.
-# This file exists so that //go:embed builtin/*.yaml always has a match.
-[]

@@ -1,0 +1,32 @@
+- id: dotnet.bin
+  name: bin do .NET
+  category: build-artifact
+  match:
+    dirname: bin
+    sibling: '*.csproj'
+  verdict: safe
+  regenerable: dotnet build
+  action: delete_dir
+  explain: Binários compilados de um projeto .NET. O dotnet build ou o Visual Studio geram de novo quando precisar.
+
+- id: dotnet.obj
+  name: obj do .NET
+  category: build-artifact
+  match:
+    dirname: obj
+    sibling: '*.csproj'
+  verdict: safe
+  regenerable: dotnet restore
+  action: delete_dir
+  explain: Arquivos intermediários de compilação do .NET. São recriados no próximo restore ou build.
+
+- id: dotnet.nuget
+  name: Pacotes do NuGet
+  category: pkg-cache
+  match:
+    path: '%USERPROFILE%\.nuget\packages'
+  verdict: safe
+  regenerable: dotnet restore
+  action: manual
+  command: dotnet nuget locals all --clear
+  explain: Pacotes NuGet baixados para todos os seus projetos. O comando dotnet nuget locals all --clear limpa com segurança e o restore baixa de novo o que for usado.

@@ -1,0 +1,21 @@
+- id: go.build_cache
+  name: Cache de build do Go
+  category: dev-cache
+  match:
+    path: '%LOCALAPPDATA%\go-build'
+  verdict: safe
+  regenerable: go build
+  action: manual
+  command: go clean -cache
+  explain: Resultados de compilação que o Go reaproveita. O comando go clean -cache limpa com segurança; o próximo build só fica um pouco mais lento.
+
+- id: go.mod_cache
+  name: Cache de módulos do Go
+  category: pkg-cache
+  match:
+    path: '%USERPROFILE%\go\pkg\mod'
+  verdict: safe
+  regenerable: go mod download
+  action: manual
+  command: go clean -modcache
+  explain: Módulos baixados pelo Go. Os arquivos ficam somente leitura, então use go clean -modcache em vez de apagar na mão. Tudo volta com go mod download.

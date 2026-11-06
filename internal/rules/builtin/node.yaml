@@ -1,0 +1,51 @@
+- id: node.node_modules
+  name: node_modules
+  category: build-artifact
+  match:
+    dirname: node_modules
+    sibling: package.json
+  verdict: safe
+  regenerable: npm install
+  action: delete_dir
+  explain: Dependências do projeto Node. Podem ser apagadas sem medo, pois o npm install (ou yarn/pnpm/bun install) recria tudo a partir do package.json.
+
+- id: node.npm_cache
+  name: Cache do npm
+  category: pkg-cache
+  match:
+    path: '%LOCALAPPDATA%\npm-cache'
+  verdict: safe
+  regenerable: npm install
+  action: delete_dir
+  explain: Pacotes baixados pelo npm para acelerar instalações futuras. Apagar só faz o próximo install baixar de novo o que precisar.
+
+- id: node.pnpm_store
+  name: Store do pnpm
+  category: pkg-cache
+  match:
+    path: '%LOCALAPPDATA%\pnpm\store'
+  verdict: safe
+  regenerable: pnpm install
+  action: manual
+  command: pnpm store prune
+  explain: Armazém global de pacotes do pnpm, compartilhado entre projetos via links. O jeito seguro de limpar é o comando pnpm store prune, que remove só o que ninguém usa mais.
+
+- id: node.yarn_cache
+  name: Cache do Yarn
+  category: pkg-cache
+  match:
+    path: '%LOCALAPPDATA%\Yarn\Cache'
+  verdict: safe
+  regenerable: yarn install
+  action: delete_dir
+  explain: Pacotes baixados pelo Yarn. Pode apagar, o próximo yarn install baixa o necessário de novo.
+
+- id: node.bun_cache
+  name: Cache do Bun
+  category: pkg-cache
+  match:
+    path: '%USERPROFILE%\.bun\install\cache'
+  verdict: safe
+  regenerable: bun install
+  action: delete_dir
+  explain: Cache de pacotes do Bun. É recriado automaticamente no próximo bun install.

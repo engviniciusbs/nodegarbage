@@ -1,0 +1,19 @@
+- id: containers.docker_vhdx
+  name: Disco do Docker Desktop (WSL)
+  category: system
+  match:
+    path: '%LOCALAPPDATA%\Docker\wsl'
+  verdict: caution
+  action: manual
+  command: docker system prune -a
+  explain: Disco virtual com suas imagens, containers e volumes. Nunca apague a pasta; rode docker system prune -a, lembrando que isso remove imagens e containers não usados.
+
+- id: containers.wsl_vhdx
+  name: Disco virtual do WSL (ext4.vhdx)
+  category: system
+  match:
+    glob: ext4.vhdx
+  verdict: caution
+  action: manual
+  command: wsl --manage <distro> --set-sparse true
+  explain: Disco de uma distro WSL, que contém todos os arquivos dela. Não apague; para recuperar espaço, ative o modo sparse da distro para o disco encolher sozinho.

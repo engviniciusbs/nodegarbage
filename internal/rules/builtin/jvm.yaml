@@ -1,0 +1,30 @@
+- id: jvm.gradle_caches
+  name: Cache do Gradle
+  category: pkg-cache
+  match:
+    path: '%USERPROFILE%\.gradle\caches'
+  verdict: safe
+  regenerable: gradle build
+  action: delete_dir
+  explain: Dependências e resultados de build do Gradle. Pode apagar, mas o próximo build baixa tudo de novo e demora mais.
+
+- id: jvm.gradle_build
+  name: build do Gradle
+  category: build-artifact
+  match:
+    dirname: build
+    sibling: 'build.gradle*'
+  verdict: safe
+  regenerable: gradle build
+  action: delete_dir
+  explain: Saída de compilação de um projeto Gradle. O gradle build recria tudo.
+
+- id: jvm.maven_repo
+  name: Repositório local do Maven
+  category: pkg-cache
+  match:
+    path: '%USERPROFILE%\.m2\repository'
+  verdict: caution
+  regenerable: mvn install
+  action: delete_dir
+  explain: Dependências do Maven baixadas. Pode conter artefatos instalados localmente que não existem na internet, então confira antes de apagar tudo.
