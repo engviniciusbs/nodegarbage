@@ -109,7 +109,10 @@ func BuildPayload(scans []ScanData, anon *Anonymizer, opts PayloadOptions) (Payl
 		return top[i].Path < top[j].Path
 	})
 	for _, e := range exts {
-		p.Extensions = append(p.Extensions, *e)
+		// Extensions come from real file names: anonymize, and drop any that still leak.
+		if name := anon.Apply(e.Ext); !anon.Leaks(name) {
+			p.Extensions = append(p.Extensions, tree.ExtStat{Ext: name, Count: e.Count, Bytes: e.Bytes})
+		}
 	}
 	sort.Slice(p.Extensions, func(i, j int) bool {
 		a, b := p.Extensions[i], p.Extensions[j]
@@ -126,6 +129,9 @@ func BuildPayload(scans []ScanData, anon *Anonymizer, opts PayloadOptions) (Payl
 	pm := PathMap{}
 	claim := func(real string) (string, bool) {
 		a := anon.Apply(real)
+		if anon.Leaks(a) {
+			return "", false
+		}
 		k := rules.NormalizePath(a)
 		if _, dup := pm[k]; dup {
 			return "", false
@@ -158,6 +164,17 @@ func BuildPayload(scans []ScanData, anon *Anonymizer, opts PayloadOptions) (Payl
 		if a, ok := claim(f.Path); ok {
 			p.TopFiles = append(p.TopFiles, tree.FileInfo{Path: a, Size: f.Size, ModTime: f.ModTime})
 		}
+	}
+
+	// Per-item extensions come from real file names: anonymize and guard them too.
+	for i := range p.Unknown {
+		var ex []string
+		for _, e := range p.Unknown[i].Exts {
+			if e = anon.Apply(e); !anon.Leaks(e) {
+				ex = append(ex, e)
+			}
+		}
+		p.Unknown[i].Exts = ex
 	}
 
 	trim(&p, opts.BudgetTokens)

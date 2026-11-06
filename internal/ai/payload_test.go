@@ -242,3 +242,78 @@ func TestCompactShapeDeterministic(t *testing.T) {
 		}
 	}
 }
+
+func TestNoNameLeakInSubstringsAndExtensions(t *testing.T) {
+	tr := build(
+		dir{"dev", 0}, dir{`dev\vinicius-backup`, 600 * mb},
+		dir{"vinicius.config", 700 * mb},
+		dir{"x", 0}, dir{`x\vinicius_old`, 650 * mb},
+		dir{"ok", 800 * mb},
+	)
+	tr.TopFiles = []tree.FileInfo{
+		{Path: `C:\Users\Vinicius\Documents\Vinicius CV.pdf`, Size: 9, ModTime: 1},
+		{Path: `C:\ok\a.vinicius`, Size: 8, ModTime: 1},
+		{Path: `C:\ok\b.iso`, Size: 7, ModTime: 1},
+	}
+	tr.Extensions = []tree.ExtStat{{Ext: ".vinicius", Count: 1, Bytes: 8}, {Ext: ".iso", Count: 1, Bytes: 7}}
+	p, pm := BuildPayload(scan(tr), NewAnonymizer("Vinicius", nil), PayloadOptions{})
+	out, err := p.Compact()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(strings.ToLower(string(out)), "vinicius") {
+		t.Fatalf("leak: %s", out)
+	}
+	if len(p.Extensions) != 2 || p.Extensions[0].Ext != ".<user>" {
+		t.Errorf("extensions = %+v", p.Extensions)
+	}
+	if len(p.Unknown) != 6 {
+		t.Fatalf("unknown = %+v", p.Unknown)
+	}
+	for _, it := range p.Unknown {
+		if strings.HasSuffix(it.Path, "ok") && len(it.Exts) != 2 {
+			t.Errorf("ok exts = %v", it.Exts)
+		}
+	}
+	for k, v := range pm {
+		if strings.Contains(k, "vinicius") && !strings.Contains(k, "<user>") {
+			t.Errorf("bad key %q -> %q", k, v)
+		}
+	}
+	if len(pm) != len(p.Unknown)+len(p.Classified)+len(p.TopFiles) {
+		t.Errorf("pathmap inconsistent: %d entries", len(pm))
+	}
+}
+
+func TestLeakGuardDropsRows(t *testing.T) {
+	// Substring replacement handles 4+ char names; Leaks is the defense-in-depth guard.
+	if g := NewAnonymizer("Vinicius", nil); !g.Leaks(`xVINICIUS.txt`) || g.Leaks(`x<user>.txt`) {
+		t.Error("Leaks misbehaves")
+	}
+	tr := build(dir{"my-zed1-stuff", 600 * mb})
+	p, _ := BuildPayload(scan(tr), NewAnonymizer("zed1", nil), PayloadOptions{})
+	out, _ := p.Compact()
+	if strings.Contains(strings.ToLower(string(out)), "zed1") {
+		t.Fatalf("leak: %s", out)
+	}
+	if len(p.Unknown) != 1 || !strings.Contains(p.Unknown[0].Path, "<user>") {
+		t.Errorf("unknown = %+v", p.Unknown)
+	}
+}
+
+func TestShortNameWholeComponentOnly(t *testing.T) {
+	a := NewAnonymizer("dev", nil)
+	if got := a.Apply(`C:\devtools\x`); got != `C:\devtools\x` {
+		t.Errorf("mangled: %q", got)
+	}
+	if got := a.Apply(`C:\Users\DEV\x`); got != `C:\Users\<user>\x` {
+		t.Errorf("got %q", got)
+	}
+	if a.Leaks(`C:\devtools`) {
+		t.Error("guard must be off for short names")
+	}
+	b := NewAnonymizer("Vinicius", nil)
+	if got := b.Apply(`C:\x\vinicius-backup\Vinicius CV.pdf`); got != `C:\x\<user>-backup\<user> CV.pdf` {
+		t.Errorf("got %q", got)
+	}
+}
