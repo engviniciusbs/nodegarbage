@@ -5,6 +5,7 @@ go 1.27
 require (
 	github.com/wailsapp/wails/v2 v2.17.1
 	golang.org/x/sys v0.48.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
