@@ -37,8 +37,8 @@
 ```
 nodegarbage/
 ├── main.go                 # bootstrap Wails (janela, Mica, bindings)
-├── app.go                  # App: fachada fina exposta ao frontend
 ├── internal/
+│   ├── app/                # App: fachada fina exposta ao frontend (bindings + eventos)
 │   ├── volumes/            # enumera discos: letra, tipo, FS, total/livre
 │   ├── scanner/            # interface Scanner; WalkScanner (MVP); MFTScanner (fase 2)
 │   ├── tree/               # Builder/Tree: arena de diretórios, top-N arquivos, histograma
@@ -53,7 +53,7 @@ nodegarbage/
 ```
 
 **Princípios:**
-- `app.go` contém só cola. Toda a lógica fica em `internal/`, testável sem Wails.
+- `internal/app` contém só cola. Toda a lógica fica em `internal/`, testável sem Wails.
 - Chamadas do frontend via bindings Wails; operações contínuas via eventos (`scan:progress`, `scan:done`, `clean:progress`, `clean:done`, `ai:done`), com no máximo 10 eventos de progresso por segundo.
 - Toda operação longa recebe `context.Context` e é cancelável pela UI.
 - Só Windows (`//go:build windows` nos arquivos com Win32). `golang.org/x/sys/windows`, sem CGO.
@@ -127,7 +127,10 @@ type Scanner interface {
 - Regras inválidas (schema, id duplicado) em `rules.d` são ignoradas e relatadas na UI; regras embutidas inválidas quebram os testes.
 
 **Precedência:**
-1. **Lista de proteção fixa no código**, que nenhum YAML sobrescreve: `%SystemRoot%`, `Program Files`, `Program Files (x86)`, `ProgramData\Microsoft`, `System Volume Information`, `$Recycle.Bin`, `pagefile.sys`, `hiberfil.sys`, `swapfile.sys`, raízes de volume, `%USERPROFILE%` (a pasta em si), `Documents`, `Desktop`, `Pictures`, `Videos`, `Music`, `Downloads` (a pasta em si) e qualquer diretório `.git`. Mais caminhos protegidos extras definidos pelo usuário. Resultado: `keep`, `source: protected`.
+1. **Lista de proteção fixa no código**, que nenhum YAML sobrescreve, em dois tipos:
+   - **Sub-árvore** (o caminho e tudo dentro dele): `%SystemRoot%`, `Program Files`, `Program Files (x86)`, `ProgramData\Microsoft`, `System Volume Information`, `$Recycle.Bin` e qualquer diretório `.git`. Exceção fixa: `%SystemRoot%\Temp` (e seu conteúdo) não é protegido, para permitir a regra de `delete_contents`.
+   - **Exata** (só o próprio caminho; o conteúdo pode ser classificado normalmente): raízes de volume, `pagefile.sys`, `hiberfil.sys`, `swapfile.sys`, `%USERPROFILE%`, `Documents`, `Desktop`, `Pictures`, `Videos`, `Music`, `Downloads`.
+   - Mais caminhos protegidos extras definidos pelo usuário (tipo sub-árvore). Resultado: `keep`, `source: protected`.
 2. Regras com `path`.
 3. Regras com `dirname` / `glob`; empate resolvido pela mais específica (com `sibling` > sem `sibling`), depois pela ordem de carregamento.
 
@@ -206,7 +209,7 @@ SQLite em `%LOCALAPPDATA%\NodeGarbage\nodegarbage.db` (`modernc.org/sqlite`), mi
 | Tabela | Conteúdo |
 |---|---|
 | `snapshots` | volume, data, motor, duração, totais, erros |
-| `snapshot_nodes` | snapshot_id, node_id, parent_id, nome, tamanhos, contagens, mtime, flags, classificação |
+| `snapshot_nodes` | snapshot_id, node_id, parent_id, nome, tamanhos, contagens, mtime, flags (a classificação não é salva: é recalculada ao carregar, pois as regras podem mudar) |
 | `snapshot_top_files` / `snapshot_extensions` | top-N arquivos e histograma |
 | `cleanups` | histórico de exclusões |
 | `ai_reports` | chave de cache, provedor, modelo, data, resposta JSON |
