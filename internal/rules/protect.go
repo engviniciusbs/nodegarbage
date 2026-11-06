@@ -92,6 +92,11 @@ func NewProtector(env Env, volumeRoots []string, extra []string) *Protector {
 
 // Check classifies path. ProtectSubtree is also returned for any path inside
 // a protected subtree (including any path with a ".git" component).
+//
+// Check is purely lexical: it cannot see through 8.3 short names, junctions,
+// symlinks or mount points. Callers about to delete files must pass the
+// canonical path of the opened item (GetFinalPathNameByHandle output), not a
+// user- or AI-supplied string.
 func (p *Protector) Check(path string) ProtectKind {
 	return p.checkNorm(NormalizePath(path))
 }
@@ -127,6 +132,16 @@ func (p *Protector) inSubtree(n string) bool {
 func (p *Protector) inException(n string) bool {
 	for _, x := range p.exceptions {
 		if isUnder(n, x) {
+			return true
+		}
+	}
+	return false
+}
+
+// exceptionBelow reports whether a protection exception lies strictly below n.
+func (p *Protector) exceptionBelow(n string) bool {
+	for _, x := range p.exceptions {
+		if x != n && isUnder(x, n) {
 			return true
 		}
 	}

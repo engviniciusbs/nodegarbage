@@ -330,3 +330,73 @@ func TestPathRuleEmptyEnvSkipped(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+func TestWindowsTempClassified(t *testing.T) {
+	sysTemp := Rule{ID: "windows.system_temp", Category: "temp", Match: Match{Path: `%SystemRoot%\Temp`}, Verdict: Safe, Action: ActionDeleteContents}
+	tr := buildTree(t, `C:\`, dirSpec{rel: `Windows`}, dirSpec{rel: `Windows\System32`},
+		dirSpec{rel: `Windows\Temp`}, dirSpec{rel: `Windows\Temp\x`}, dirSpec{rel: `Windows\Temp\x\.git`},
+		dirSpec{rel: `Windows\Temp2`})
+
+	// With the rule: Temp is the rule's, x inherits it.
+	cls := newTestClassifier([]Rule{sysTemp}, fakeFS{}).Classify(tr, testNow)
+	for _, p := range []string{`C:\Windows\Temp`, `C:\Windows\Temp\x`} {
+		if got := cls.Get(tr, find(t, tr, p)); got.RuleID != "windows.system_temp" || got.Source != SourceRule || got.Verdict != Safe {
+			t.Errorf("with rule %s: %+v", p, got)
+		}
+	}
+	// Protection still applies around the exception. (A .git inside a consumed
+	// rule match inherits the rule by design: HasProtectedDescendant excludes
+	// .git and the cleaner handles it; see the no-rule case below.)
+	for _, p := range []string{`C:\Windows\Temp2`, `C:\Windows\System32`} {
+		if got := cls.Get(tr, find(t, tr, p)); got.Source != SourceProtected || got.Verdict != Keep {
+			t.Errorf("with rule %s: %+v", p, got)
+		}
+	}
+
+	// Without the rule: Temp and its content are unknown, not inherited Keep.
+	cls = newTestClassifier(nil, fakeFS{}).Classify(tr, testNow)
+	for _, p := range []string{`C:\Windows\Temp`, `C:\Windows\Temp\x`} {
+		if got := cls.Get(tr, find(t, tr, p)); got.Source != SourceUnknown {
+			t.Errorf("without rule %s: %+v", p, got)
+		}
+	}
+	if got := cls.Get(tr, find(t, tr, `C:\Windows\Temp\x\.git`)); got.Source != SourceProtected {
+		t.Errorf("without rule .git: %+v", got)
+	}
+	// A dirname rule applies inside the exception too.
+	tmpX := Rule{ID: "x", Category: "temp", Match: Match{Dirname: "x"}, Verdict: Safe, Action: ActionDeleteDir}
+	cls = newTestClassifier([]Rule{tmpX}, fakeFS{}).Classify(tr, testNow)
+	if got := cls.Get(tr, find(t, tr, `C:\Windows\Temp\x`)); got.RuleID != "x" || got.Source != SourceRule {
+		t.Errorf("dirname in Temp: %+v", got)
+	}
+	// Agreement with Protector.Check.
+	p := newTestProtector()
+	for _, s := range []string{`C:\Windows\Temp`, `C:\Windows\Temp\x`} {
+		if p.Check(s) != ProtectNone {
+			t.Errorf("Check(%s) != none", s)
+		}
+	}
+}
+
+func TestExactAncestorStopsInheritance(t *testing.T) {
+	users := Rule{ID: "user.users", Category: "temp", Match: Match{Path: `C:\Users`}, Verdict: Safe, Action: ActionDeleteDir}
+	tr := buildTree(t, `C:\`, dirSpec{rel: `Users`}, dirSpec{rel: `Users\dev`}, dirSpec{rel: `Users\dev\Documents`},
+		dirSpec{rel: `Users\dev\Documents\thesis`}, dirSpec{rel: `Users\dev\AppData`}, dirSpec{rel: `Users\other`})
+	cls := newTestClassifier([]Rule{users}, fakeFS{}).Classify(tr, testNow)
+	if got := cls.Get(tr, find(t, tr, `C:\Users`)); got.RuleID != "user.users" {
+		t.Fatalf("users: %+v", got)
+	}
+	if got := cls.Get(tr, find(t, tr, `C:\Users\other`)); got.RuleID != "user.users" {
+		t.Fatalf("other: %+v", got)
+	}
+	for _, p := range []string{`C:\Users\dev\Documents\thesis`, `C:\Users\dev\AppData`} {
+		if got := cls.Get(tr, find(t, tr, p)); got.Source != SourceUnknown || got.Verdict != "" {
+			t.Errorf("%s: %+v (must not inherit safe across an exact-protected ancestor)", p, got)
+		}
+	}
+	for _, p := range []string{`C:\Users\dev`, `C:\Users\dev\Documents`} {
+		if got := cls.Get(tr, find(t, tr, p)); got.Source != SourceProtected {
+			t.Errorf("%s: %+v", p, got)
+		}
+	}
+}

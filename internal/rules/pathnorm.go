@@ -7,17 +7,22 @@ import "strings"
 type Env func(key string) string
 
 // NormalizePath returns the canonical comparison form of a Windows path:
-// "/" becomes "\", the \\?\ (and \\?\UNC\) prefix is removed, repeated
-// separators are collapsed, "." and ".." components are resolved, there is no
+// "/" becomes "\", the \\?\ and \\.\ prefixes (and their UNC\ forms) are
+// removed, repeated separators are collapsed, "." and ".." components are
+// resolved, trailing dots/spaces of each component are trimmed, there is no
 // trailing separator (except for a volume root such as "c:\") and the result is
 // lowercase. It is purely lexical and never touches the disk.
 func NormalizePath(p string) string {
 	p = strings.ReplaceAll(p, "/", `\`)
-	switch {
-	case strings.HasPrefix(p, `\\?\UNC\`):
-		p = `\\` + p[len(`\\?\UNC\`):]
-	case strings.HasPrefix(p, `\\?\`):
-		p = p[len(`\\?\`):]
+	for _, pre := range []string{`\\?\`, `\\.\`} {
+		if len(p) >= len(pre)+4 && strings.EqualFold(p[len(pre):len(pre)+4], `UNC\`) && strings.HasPrefix(p, pre) {
+			p = `\\` + p[len(pre)+4:]
+			break
+		}
+		if strings.HasPrefix(p, pre) {
+			p = p[len(pre):]
+			break
+		}
 	}
 	lead := ""
 	if strings.HasPrefix(p, `\\`) {
@@ -36,6 +41,11 @@ func NormalizePath(p string) string {
 			if len(parts) > head {
 				parts = parts[:len(parts)-1]
 			}
+			continue
+		}
+		// Win32 ignores trailing dots and spaces of a component:
+		// `C:\Windows.\x` and `C:\Windows \x` both name C:\Windows\x.
+		if c = strings.TrimRight(c, ". "); c == "" {
 			continue
 		}
 		parts = append(parts, c)

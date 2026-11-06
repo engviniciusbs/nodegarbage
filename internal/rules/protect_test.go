@@ -51,6 +51,12 @@ func TestNormalizePath(t *testing.T) {
 		`C:\..\..\Windows`:      `c:\windows`,
 		`\\?\UNC\srv\share\x`:   `\\srv\share\x`,
 		`\\srv\share\`:          `\\srv\share`,
+		`\\.\C:\Windows\x`:      `c:\windows\x`,
+		`\\.\UNC\srv\share\x`:   `\\srv\share\x`,
+		`C:\Windows.\System32`:  `c:\windows\system32`,
+		`C:\Windows \x`:         `c:\windows\x`,
+		`D:\a\.git.`:            `d:\a\.git`,
+		`D:\a\...\b`:            `d:\a\b`,
 	}
 	for in, want := range cases {
 		if got := NormalizePath(in); got != want {
@@ -66,6 +72,8 @@ func TestProtectCaseAndForm(t *testing.T) {
 		`C:\Program Files\x`, `C:\Program Files (x86)`, `C:\ProgramData\Microsoft\Windows`,
 		`C:\System Volume Information`, `D:\$Recycle.Bin\S-1-5`,
 		`C:\Users\dev\..\..\Windows\System32`,
+		`\\.\C:\Windows\x`, `C:\Windows.\System32`, `C:\Windows \x`, `C:\Windows. .\x`,
+		`D:\src\.git.\objects`, `D:\src\.git `, `\\?\C:\Program Files.\x`,
 	} {
 		expectKind(t, p, s, ProtectSubtree)
 	}

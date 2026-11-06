@@ -27,12 +27,20 @@ var unknownClassification = Classification{Source: SourceUnknown}
 
 type entry struct {
 	cls  Classification
-	kind ProtectKind // ProtectNone for rule matches
+	kind ProtectKind // ProtectNone for rule matches and barriers
+	// barrier marks an unclassified node that must not inherit from above
+	// (the root of a protection exception such as %SystemRoot%\Temp).
+	barrier bool
 }
 
+// stopsInheritance: content below exact-protected nodes and barriers is
+// classified on its own; inheriting past them would leak a verdict from a
+// rule higher up (e.g. `path: C:\Users` onto Documents\thesis).
+func (e entry) stopsInheritance() bool { return e.barrier || e.kind == ProtectExact }
+
 // Classifications maps tree nodes to their recorded classification. Nodes
-// without an entry inherit from the nearest recorded ancestor, except
-// exact-protected ancestors, whose content is classified on its own.
+// without an entry inherit from the nearest recorded ancestor; the search
+// stops (unknown) at an exact-protected ancestor or a barrier.
 // Read-only after Classify returns.
 type Classifications struct {
 	m map[tree.NodeID]entry
@@ -41,6 +49,9 @@ type Classifications struct {
 // Get returns the classification of id, inherited when not recorded directly.
 func (c *Classifications) Get(t *tree.Tree, id tree.NodeID) Classification {
 	if e, ok := c.m[id]; ok {
+		if e.barrier {
+			return unknownClassification
+		}
 		return e.cls
 	}
 	for cur := id; cur >= 0 && int(cur) < len(t.Nodes); {
@@ -48,7 +59,10 @@ func (c *Classifications) Get(t *tree.Tree, id tree.NodeID) Classification {
 		if cur == tree.NoNode {
 			break
 		}
-		if e, ok := c.m[cur]; ok && e.kind != ProtectExact {
+		if e, ok := c.m[cur]; ok {
+			if e.stopsInheritance() {
+				break
+			}
 			return e.cls
 		}
 	}
@@ -122,7 +136,10 @@ type walkItem struct {
 //     Action of a rule that also matches them);
 //   - exact-protected nodes are descended normally;
 //   - inside a protected subtree only path rules are looked for (so the UI can
-//     show their command/explain), and only toward nodes that can hold them;
+//     show their command/explain), and only toward nodes that can hold them or
+//     a protection exception;
+//   - the root of an exception (%SystemRoot%\Temp) is classified normally; with
+//     no rule it is recorded as a barrier so its content reads as unknown;
 //   - a rule match consumes the node's subtree, unless it holds a protected
 //     path, in which case the walk continues so that path is recorded.
 func (c *Classifier) Classify(t *tree.Tree, now time.Time) *Classifications {
@@ -140,15 +157,19 @@ func (c *Classifier) Classify(t *tree.Tree, now time.Time) *Classifications {
 		n := &t.Nodes[it.id]
 
 		descend := true
+		kind := c.prot.checkNorm(it.norm)
+		// Leaving a protected subtree through an exception (%SystemRoot%\Temp):
+		// classify normally from here on, and do not inherit Keep from above.
+		exceptionRoot := it.protected && kind == ProtectNone
+		if exceptionRoot {
+			it.protected = false
+		}
 		if it.protected {
 			if r, ok := c.matchPath(it.norm); ok {
 				cls.m[it.id] = entry{cls: protectedCls(r), kind: ProtectSubtree}
-				descend = false
-			} else {
-				descend = c.pathRuleBelow(it.norm)
 			}
+			descend = c.pathRuleBelow(it.norm) || c.prot.exceptionBelow(it.norm)
 		} else {
-			kind := c.prot.checkNorm(it.norm)
 			r, matched := c.match(t, it.id, it.norm, names)
 			switch {
 			case kind != ProtectNone:
@@ -159,7 +180,7 @@ func (c *Classifier) Classify(t *tree.Tree, now time.Time) *Classifications {
 				cls.m[it.id] = entry{cls: pc, kind: kind}
 				if kind == ProtectSubtree {
 					it.protected = true
-					descend = c.pathRuleBelow(it.norm)
+					descend = c.pathRuleBelow(it.norm) || c.prot.exceptionBelow(it.norm)
 				}
 			case matched:
 				cls.m[it.id] = entry{cls: Classification{
@@ -168,6 +189,8 @@ func (c *Classifier) Classify(t *tree.Tree, now time.Time) *Classifications {
 					Source:   SourceRule,
 				}}
 				descend = c.prot.HasProtectedDescendant(it.norm)
+			case exceptionRoot:
+				cls.m[it.id] = entry{barrier: true}
 			}
 		}
 		if !descend {
