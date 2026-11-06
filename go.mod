@@ -3,6 +3,7 @@ module github.com/engviniciusbs/nodegarbage
 go 1.27
 
 require (
+	github.com/danieljoos/wincred v1.2.3
 	github.com/wailsapp/wails/v2 v2.17.1
 	golang.org/x/sys v0.49.0
 	gopkg.in/yaml.v3 v3.0.1
