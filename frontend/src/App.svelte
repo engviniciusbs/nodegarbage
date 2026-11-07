@@ -1,10 +1,11 @@
 <script lang="ts">
   import Sidebar from './components/layout/Sidebar.svelte'
-  import EmptyState from './components/ui/EmptyState.svelte'
   import Home from './screens/Home.svelte'
   import Scan from './screens/Scan.svelte'
   import Results from './screens/Results.svelte'
   import AIReport from './screens/AIReport.svelte'
+  import History from './screens/History.svelte'
+  import Settings from './screens/Settings.svelte'
   import { route } from '$lib/route.svelte'
   import { initScanEvents } from '$lib/stores/scan.svelte'
   import { initAIEvents } from '$lib/stores/ai.svelte'
@@ -26,8 +27,10 @@
       <Results />
     {:else if route.current === 'ai'}
       <AIReport />
-    {:else}
-      <EmptyState title={strings.common.empty} description={strings.common.comingSoon} />
+    {:else if route.current === 'history'}
+      <History />
+    {:else if route.current === 'settings'}
+      <Settings />
     {/if}
   </main>
 </div>

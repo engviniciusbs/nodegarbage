@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { untrack, type Snippet } from 'svelte'
+  import { untrack } from 'svelte'
   import SummaryBar from '../components/results/SummaryBar.svelte'
   import Breadcrumb from '../components/results/Breadcrumb.svelte'
   import TreeList from '../components/results/TreeList.svelte'
   import Treemap from '../components/treemap/Treemap.svelte'
   import DetailsPanel from '../components/results/DetailsPanel.svelte'
   import SelectionBar from '../components/results/SelectionBar.svelte'
+  import CleanAction from '../components/clean/CleanAction.svelte'
   import Button from '../components/ui/Button.svelte'
   import EmptyState from '../components/ui/EmptyState.svelte'
   import ErrorState from '../components/ui/ErrorState.svelte'
@@ -14,10 +15,8 @@
   import type { SummaryDTO } from '$lib/api'
   import { route } from '$lib/route.svelte'
   import { results, loadVolume, openNode, refresh, toggleCategory } from '$lib/stores/results.svelte'
+  import { clean } from '$lib/stores/clean.svelte'
   import { strings } from '$lib/strings'
-
-  /** Task 21 plugs the "Limpar" button into the selection bar. */
-  let { barActions }: { barActions?: Snippet } = $props()
 
   let summary = $state<SummaryDTO | undefined>()
   let focusedId = $state<number | null>(null)
@@ -32,11 +31,21 @@
       else if (volume) void refresh()
     })
     if (!volume) return
+    loadSummary(volume)
+  })
+
+  function loadSummary(volume: string) {
+    if (!volume) return
     GetSummary(volume)
       .then((s) => {
         if (route.volume === volume) summary = s
       })
       .catch(() => {})
+  }
+
+  // A finished cleaning changes the totals: refetch the summary (the list is refreshed by the clean store).
+  $effect(() => {
+    if (clean.doneCount > 0) untrack(() => loadSummary(route.volume))
   })
 
   const items = $derived(
@@ -89,6 +98,8 @@
         <DetailsPanel node={focused} />
       </div>
     </div>
-    <SelectionBar actions={barActions} />
+    <SelectionBar>
+      {#snippet actions()}<CleanAction />{/snippet}
+    </SelectionBar>
   </div>
 {/if}
