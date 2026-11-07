@@ -37,11 +37,11 @@
       <VerdictBadge verdict={asVerdict(node.verdict)} source={node.source} />
     </h2>
     <p class="font-mono text-xs break-all text-muted select-text">{node.path}</p>
-    <dl class="grid grid-cols-3 gap-2">
+    <dl class="grid grid-cols-[repeat(3,auto)] gap-1.5">
       {#each stats as s (s.label)}
-        <div class="min-w-0 rounded-sm bg-well px-2.5 py-2">
-          <dt class="text-[11px] leading-tight tracking-[.04em] text-muted uppercase">{s.label}</dt>
-          <dd class="mt-0.5 text-sm font-semibold break-words tabular-nums">{s.value}</dd>
+        <div class="rounded-sm bg-well px-2 py-2">
+          <dt class="text-[11px] leading-tight tracking-[.02em] whitespace-nowrap text-muted uppercase">{s.label}</dt>
+          <dd class="mt-0.5 text-[13px] font-semibold whitespace-nowrap tabular-nums">{s.value}</dd>
         </div>
       {/each}
     </dl>

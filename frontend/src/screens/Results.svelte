@@ -15,11 +15,12 @@
   import EmptyState from '../components/ui/EmptyState.svelte'
   import ErrorState from '../components/ui/ErrorState.svelte'
   import Skeleton from '../components/ui/Skeleton.svelte'
-  import { GetSummary } from '$lib/api'
+  import { GetSummary, ListVolumes } from '$lib/api'
   import type { SummaryDTO } from '$lib/api'
   import { route } from '$lib/route.svelte'
   import { results, loadVolume, openNode, refresh, toggleCategory } from '$lib/stores/results.svelte'
   import { clean } from '$lib/stores/clean.svelte'
+  import { pickScannedVolume } from '$lib/volumes'
   import { strings } from '$lib/strings'
 
   const PANEL_ID = 'results-view'
@@ -27,6 +28,22 @@
   let summary = $state<SummaryDTO | undefined>()
   let focusedId = $state<number | null>(null)
   let view = $state<ResultsView>('list')
+  /** True while looking for a scanned volume to open (Results reached from the sidebar with no volume). */
+  let picking = $state(false)
+
+  // No volume chosen yet: open the most recently scanned one. The empty state is only for 'nothing scanned'.
+  $effect(() => {
+    if (route.volume) return
+    picking = true
+    Promise.resolve()
+      .then(() => ListVolumes())
+      .then((vols) => {
+        const root = pickScannedVolume(vols ?? [])
+        if (root && !route.volume) route.volume = root
+      })
+      .catch(() => {})
+      .finally(() => (picking = false))
+  })
 
   $effect(() => {
     const volume = route.volume
@@ -71,7 +88,11 @@
 <div class="flex h-full min-h-0 flex-col">
   <ResultsHeader volume={route.volume} />
   {#if !route.volume}
-    <EmptyState title={strings.results.emptyVolume} />
+    {#if picking}
+      <div class="px-6"><Skeleton lines={4} /></div>
+    {:else}
+      <EmptyState title={strings.results.emptyVolume} />
+    {/if}
   {:else}
     {#if summary}<SummaryBar {summary} />{/if}
     <div class="flex shrink-0 items-center justify-between gap-3 px-6 pt-3.5 pb-2">

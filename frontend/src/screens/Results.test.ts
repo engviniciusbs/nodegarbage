@@ -149,4 +149,26 @@ describe('Results screen', () => {
     expect(m.StartScan).toHaveBeenCalledWith(['C:\\'])
     expect(route.current).toBe('scan')
   })
+
+  it('opens the most recently scanned volume when none is chosen', async () => {
+    m.ListVolumes.mockResolvedValue([
+      { root: 'C:\\', lastScan: '2026-11-01T10:00:00Z' },
+      { root: 'D:\\', lastScan: null },
+      { root: 'F:\\', lastScan: '2026-11-05T10:00:00Z' },
+    ] as never)
+    route.volume = ''
+    render(Results)
+    await waitFor(() => expect(route.volume).toBe('F:\\'))
+    expect(await screen.findAllByRole('treeitem')).toHaveLength(2)
+    expect(m.GetChildren).toHaveBeenCalledWith('F:\\', -1)
+    expect(screen.queryByText(strings.results.emptyVolume)).toBeNull()
+  })
+
+  it('shows the empty state only when no volume has a scan', async () => {
+    m.ListVolumes.mockResolvedValue([{ root: 'C:\\', lastScan: null }] as never)
+    route.volume = ''
+    render(Results)
+    expect(await screen.findByText(strings.results.emptyVolume)).toBeInTheDocument()
+    expect(route.volume).toBe('')
+  })
 })

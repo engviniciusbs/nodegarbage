@@ -70,7 +70,7 @@
     onchange={ontoggle}
   />
   <span class="flex min-w-0 items-center gap-2">
-    <span class="shrink-0 text-muted"><Icon name={node.hasChildren ? 'folder' : 'file'} size={16} /></span>
+    <span class="shrink-0 text-muted"><Icon name="folder" size={16} /></span>
     <span class="truncate">{node.name}</span>
     {#if node.link}<span class="shrink-0 text-muted"><Icon name="link" size={14} /></span><span class="sr-only">{strings.results.link}</span>{/if}
     {#if node.cloud}<span class="shrink-0 text-muted"><Icon name="cloud" size={14} /></span><span class="sr-only">{strings.results.cloud}</span>{/if}

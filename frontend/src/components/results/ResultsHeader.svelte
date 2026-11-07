@@ -4,6 +4,7 @@
   import { formatDate, formatDuration, formatTime } from '$lib/format'
   import { route } from '$lib/route.svelte'
   import { scanState, startScan } from '$lib/stores/scan.svelte'
+  import { scanTime } from '$lib/volumes'
   import { strings } from '$lib/strings'
 
   let { volume }: { volume: string } = $props()
@@ -20,8 +21,9 @@
     Promise.resolve()
       .then(() => ListVolumes())
       .then((vols) => {
-        const t = Date.parse(String(vols?.find((x) => x.root === v)?.lastScan ?? ''))
-        if (volume === v && Number.isFinite(t) && new Date(t).getFullYear() > 2000) lastScanSec = t / 1000
+        const found = vols?.find((x) => x.root === v)
+        const t = found ? scanTime(found) : null
+        if (volume === v && t !== null) lastScanSec = t / 1000
       })
       .catch(() => {})
   })
