@@ -9,6 +9,12 @@
   "author": {
     "name": "engviniciusbs",
     "email": "engviniciusbs@gmail.com"
+  },
+  "info": {
+    "companyName": "NodeGarbage contributors",
+    "productName": "NodeGarbage",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright (c) 2026 NodeGarbage contributors. MIT License.",
+    "comments": "Open-source disk cleanup for developers. Only you delete."
   }
 }
-

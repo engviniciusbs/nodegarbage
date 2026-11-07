@@ -28,6 +28,10 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// version is overridden at release time via -ldflags "-X main.version=<tag>".
+//lint:ignore U1000 set at release time via -ldflags
+var version = "dev"
+
 // wailsEmitter emite eventos ao frontend; o contexto é definido no OnStartup.
 type wailsEmitter struct {
 	ctx atomic.Pointer[context.Context]

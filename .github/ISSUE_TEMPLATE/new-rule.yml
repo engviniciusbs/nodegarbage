@@ -1,0 +1,44 @@
+name: New rule
+description: Suggest a cache or build artifact that NodeGarbage should recognize
+labels: ["rule"]
+body:
+  - type: input
+    id: path
+    attributes:
+      label: Path or pattern
+      description: Use environment variables where possible, for example %LOCALAPPDATA%\Tool\Cache, or a directory name such as target.
+    validations:
+      required: true
+  - type: input
+    id: ecosystem
+    attributes:
+      label: Tool or ecosystem
+      description: For example Gradle, Flutter, JetBrains, Unity.
+    validations:
+      required: true
+  - type: dropdown
+    id: verdict
+    attributes:
+      label: Suggested verdict
+      options: ["safe", "caution", "keep"]
+    validations:
+      required: true
+  - type: input
+    id: regenerate
+    attributes:
+      label: How is the data regenerated?
+      description: The command or action that recreates it, for example "npm install".
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: Link to official documentation or another reference confirming the path is safe to clean.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Edge cases, sibling files that identify the project (for example package.json), what is lost if deleted.
