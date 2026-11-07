@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"testing"
 )
 
@@ -86,7 +87,7 @@ func TestReloadFromSnapshotReclassifies(t *testing.T) {
 	if _, err := b.GetChildren(`C:\`, -1); err == nil {
 		t.Fatal("expected error before Startup")
 	}
-	b.Startup(nil)
+	b.Startup(context.TODO())
 	checkChildren(t, b)
 	if _, err := b.GetChildren(`Z:\`, -1); err == nil {
 		t.Fatal("expected volume not scanned")

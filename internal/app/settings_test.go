@@ -86,7 +86,7 @@ func TestExtraProtectedAppliedAtStartup(t *testing.T) {
 	if b.deps.Protector.Check(`D:\x\y`) != rules.ProtectNone {
 		t.Fatal("precondition")
 	}
-	b.Startup(nil)
+	b.Startup(context.TODO())
 	if b.deps.Protector.Check(`D:\x\y`) != rules.ProtectSubtree {
 		t.Fatal("extra protected paths not applied at startup")
 	}

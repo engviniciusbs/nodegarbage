@@ -56,7 +56,7 @@ Os binários **ainda não são assinados digitalmente**, então o Windows SmartS
 Requisitos: Go 1.27, Node.js (LTS) e a [CLI do Wails v2](https://wails.io/docs/gettingstarted/installation).
 
 ```powershell
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
 npm ci --prefix frontend
 wails build
 ```
@@ -66,12 +66,13 @@ O executável é gerado em `build/bin/`. Use `wails build -nsis` para o instalad
 ## Executar os testes
 
 ```powershell
-wails generate module            # gera frontend/wailsjs, necessário para o svelte-check
+wails generate module            # gera frontend/wailsjs (rode primeiro, necessário para o svelte-check)
+npm ci --prefix frontend
+npm --prefix frontend run check
+npm --prefix frontend test -- --run
 go vet ./...
 go test ./...
 go test -race ./...              # requer CGO e gcc
-npm --prefix frontend run check
-npm --prefix frontend test -- --run
 ```
 
 Defina `CI_NO_RECYCLE=1` para pular os testes que usam a Lixeira real.

@@ -9,8 +9,9 @@ Requirements: Windows, Go 1.27, Node.js (LTS), the [Wails v2 CLI](https://wails.
 ```powershell
 git clone https://github.com/engviniciusbs/nodegarbage
 cd nodegarbage
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
+wails generate module      # generates frontend/wailsjs (git-ignored); run before the frontend checks
 npm ci --prefix frontend
-wails generate module      # generates frontend/wailsjs (git-ignored)
 wails dev                  # live development
 ```
 
@@ -19,11 +20,14 @@ wails dev                  # live development
 Run these before opening a PR (CI runs the same on `windows-latest`):
 
 ```powershell
-go vet ./...
-go test ./...
-go test -race ./...
+wails generate module
+npm ci --prefix frontend
 npm --prefix frontend run check
 npm --prefix frontend test -- --run
+go vet ./...
+staticcheck ./...          # honnef.co/go/tools/cmd/staticcheck@v0.8.2
+go test ./...
+go test -race ./...
 wails build -clean
 ```
 

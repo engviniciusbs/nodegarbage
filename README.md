@@ -56,7 +56,7 @@ The binaries are **not code-signed yet**, so Windows SmartScreen will warn "Wind
 Requirements: Go 1.27, Node.js (LTS), and the [Wails v2 CLI](https://wails.io/docs/gettingstarted/installation).
 
 ```powershell
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
 npm ci --prefix frontend
 wails build
 ```
@@ -66,12 +66,13 @@ The executable is written to `build/bin/`. Use `wails build -nsis` for the insta
 ## Running tests
 
 ```powershell
-wails generate module            # generates frontend/wailsjs, needed by svelte-check
+wails generate module            # generates frontend/wailsjs (run first, needed by svelte-check)
+npm ci --prefix frontend
+npm --prefix frontend run check
+npm --prefix frontend test -- --run
 go vet ./...
 go test ./...
 go test -race ./...              # needs CGO and gcc
-npm --prefix frontend run check
-npm --prefix frontend test -- --run
 ```
 
 Set `CI_NO_RECYCLE=1` to skip the tests that touch the real Recycle Bin.

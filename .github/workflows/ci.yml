@@ -31,11 +31,13 @@ jobs:
           $v = go list -m -f '{{.Version}}' github.com/wailsapp/wails/v2
           go install "github.com/wailsapp/wails/v2/cmd/wails@$v"
 
-      - name: Install frontend dependencies
-        run: npm ci --prefix frontend
-
+      # frontend/dist/.gitkeep is tracked so //go:embed all:frontend/dist always
+      # resolves, which lets Go tooling load package main before the frontend builds.
       - name: Generate Wails JS bindings
         run: wails generate module
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
 
       - name: Frontend type check
         run: npm --prefix frontend run check
@@ -48,7 +50,7 @@ jobs:
 
       - name: staticcheck
         run: |
-          go install honnef.co/go/tools/cmd/staticcheck@latest
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
           staticcheck ./...
 
       - name: go test
