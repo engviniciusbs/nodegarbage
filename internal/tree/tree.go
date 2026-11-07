@@ -128,3 +128,96 @@ func (t *Tree) Find(path string) (NodeID, bool) {
 	}
 	return cur, true
 }
+
+// Clone returns a copy that can be edited with Remove and RemoveContents
+// without disturbing readers of t: the Nodes slice is copied, while Children
+// and TopFiles slices stay shared because the editing methods always replace
+// them and never modify them in place.
+func (t *Tree) Clone() *Tree {
+	c := *t
+	c.Nodes = append([]Node(nil), t.Nodes...)
+	return &c
+}
+
+// IsRemoved reports whether id was detached by Remove (or is out of range).
+// The root is never removed.
+func (t *Tree) IsRemoved(id NodeID) bool {
+	if id < 0 || int(id) >= len(t.Nodes) {
+		return true
+	}
+	return id != t.Root && t.Nodes[id].Parent == NoNode
+}
+
+// subtractAncestors lowers the totals of every ancestor of id (TreeLatest is
+// left as is).
+func (t *Tree) subtractAncestors(id NodeID, size int64, files uint32) {
+	for cur := t.Nodes[id].Parent; cur != NoNode; cur = t.Nodes[cur].Parent {
+		n := &t.Nodes[cur]
+		n.TotalSize -= size
+		if n.TotalFiles >= files {
+			n.TotalFiles -= files
+		} else {
+			n.TotalFiles = 0
+		}
+	}
+}
+
+// dropTopFiles removes top files located under dir (a path, no trailing "\").
+func (t *Tree) dropTopFiles(dir string) {
+	prefix := strings.ToLower(strings.TrimRight(dir, `\`)) + `\`
+	var out []FileInfo
+	changed := false
+	for _, f := range t.TopFiles {
+		if strings.HasPrefix(strings.ToLower(f.Path), prefix) {
+			changed = true
+			continue
+		}
+		out = append(out, f)
+	}
+	if changed {
+		t.TopFiles = out
+	}
+}
+
+// Remove detaches the node from its parent and subtracts its totals from all
+// ancestors. The node is marked removed (Parent = NoNode, unreachable from
+// the root); ids of other nodes are unchanged. Removing the root, an
+// out-of-range id or an already removed node does nothing. Remove replaces
+// the parent's Children slice instead of editing it, so it is safe on a Clone.
+func (t *Tree) Remove(id NodeID) {
+	if id == t.Root || t.IsRemoved(id) {
+		return
+	}
+	path := t.Path(id)
+	n := t.Nodes[id]
+	t.subtractAncestors(id, n.TotalSize, n.TotalFiles)
+	p := &t.Nodes[n.Parent]
+	kids := make([]NodeID, 0, len(p.Children))
+	for _, c := range p.Children {
+		if c != id {
+			kids = append(kids, c)
+		}
+	}
+	p.Children = kids
+	t.Nodes[id].Parent = NoNode
+	t.dropTopFiles(path)
+}
+
+// RemoveContents empties the node but keeps it: its children are detached
+// (marked removed), its own and total size/file counts become zero and the
+// ancestors are adjusted.
+func (t *Tree) RemoveContents(id NodeID) {
+	if id < 0 || int(id) >= len(t.Nodes) || t.IsRemoved(id) {
+		return
+	}
+	path := t.Path(id)
+	n := t.Nodes[id]
+	t.subtractAncestors(id, n.TotalSize, n.TotalFiles)
+	for _, c := range n.Children {
+		t.Nodes[c].Parent = NoNode
+	}
+	t.Nodes[id].Children = nil
+	t.Nodes[id].OwnSize, t.Nodes[id].OwnFiles = 0, 0
+	t.Nodes[id].TotalSize, t.Nodes[id].TotalFiles = 0, 0
+	t.dropTopFiles(path)
+}

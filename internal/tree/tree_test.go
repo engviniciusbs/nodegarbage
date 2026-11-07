@@ -133,3 +133,66 @@ func TestAddDirConcurrent(t *testing.T) {
 		t.Fatalf("nodes = %d", len(tr.Nodes))
 	}
 }
+
+func removeFixture() (*Tree, NodeID, NodeID, NodeID) {
+	b := NewBuilder(`C:\`, 10)
+	root := b.AddDir(NoNode, `C:\`, 0)
+	a := b.AddDir(root, "a", 0)
+	ab := b.AddDir(a, "b", 0)
+	c := b.AddDir(root, "c", 0)
+	b.SetOwnStats(a, 100, 2, 10)
+	b.SetOwnStats(ab, 50, 1, 30)
+	b.SetOwnStats(c, 7, 1, 5)
+	w := b.NewWorker()
+	w.AddFile(`C:\a\b`, FileEntry{Name: "f", Size: 50})
+	w.AddFile(`C:\c`, FileEntry{Name: "g", Size: 7})
+	return b.Finish(), a, ab, c
+}
+
+func TestRemoveDetachesAndAdjustsAncestors(t *testing.T) {
+	tr, a, ab, c := removeFixture()
+	orig := tr.Clone()
+	tr = tr.Clone()
+	tr.Remove(ab)
+	if tr.Nodes[a].TotalSize != 100 || tr.Nodes[a].TotalFiles != 2 || tr.Nodes[tr.Root].TotalSize != 107 {
+		t.Fatalf("a=%+v root=%+v", tr.Nodes[a], tr.Nodes[tr.Root])
+	}
+	if tr.Nodes[a].TreeLatest != 30 {
+		t.Fatalf("TreeLatest changed: %d", tr.Nodes[a].TreeLatest)
+	}
+	if len(tr.Nodes[a].Children) != 0 || !tr.IsRemoved(ab) || tr.IsRemoved(c) {
+		t.Fatal("not detached")
+	}
+	if _, ok := tr.Find(`C:\a\b`); ok {
+		t.Fatal("removed node still found")
+	}
+	if len(tr.TopFiles) != 1 || tr.TopFiles[0].Path != `C:\c\g` {
+		t.Fatalf("top files: %+v", tr.TopFiles)
+	}
+	tr.Remove(ab) // idempotent
+	if tr.Nodes[tr.Root].TotalSize != 107 {
+		t.Fatal("double removal subtracted twice")
+	}
+	tr.Remove(tr.Root)
+	if tr.IsRemoved(tr.Root) {
+		t.Fatal("root removed")
+	}
+	// The original (cloned from) tree is untouched.
+	if orig.Nodes[a].TotalSize != 150 || len(orig.Nodes[a].Children) != 1 || len(orig.TopFiles) != 2 {
+		t.Fatalf("clone source modified: %+v", orig.Nodes[a])
+	}
+}
+
+func TestRemoveContentsKeepsNode(t *testing.T) {
+	tr, a, ab, _ := removeFixture()
+	tr.RemoveContents(a)
+	if n := tr.Nodes[a]; n.TotalSize != 0 || n.OwnSize != 0 || n.TotalFiles != 0 || n.OwnFiles != 0 || len(n.Children) != 0 {
+		t.Fatalf("a=%+v", n)
+	}
+	if tr.Nodes[tr.Root].TotalSize != 7 || tr.IsRemoved(a) || !tr.IsRemoved(ab) {
+		t.Fatalf("root=%+v", tr.Nodes[tr.Root])
+	}
+	if _, ok := tr.Find(`C:\a`); !ok {
+		t.Fatal("node itself must stay")
+	}
+}

@@ -1,6 +1,9 @@
 package rules
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
 // ProtectKind says how a path is covered by the hard-coded protection list.
 type ProtectKind int
@@ -45,10 +48,11 @@ var (
 )
 
 // Protector answers whether a path is protected. All stored paths are in
-// NormalizePath form. It is read-only after construction and safe for
-// concurrent use.
+// NormalizePath form. It is safe for concurrent use; only SetExtra mutates it.
 type Protector struct {
-	subtree    []string // builtin subtrees, subject to exceptions
+	env        Env
+	mu         sync.RWMutex // guards extra
+	subtree    []string     // builtin subtrees, subject to exceptions
 	exceptions []string
 	extra      []string // user subtrees, no exceptions
 	exact      map[string]bool
@@ -58,7 +62,7 @@ type Protector struct {
 // is empty or missing are skipped. volumeRoots are paths like `C:\`; extra are
 // user-defined subtree paths (env vars allowed).
 func NewProtector(env Env, volumeRoots []string, extra []string) *Protector {
-	p := &Protector{exact: map[string]bool{}}
+	p := &Protector{env: env, exact: map[string]bool{}}
 	add := func(dst *[]string, entries []string) {
 		for _, e := range entries {
 			if n, ok := expandNorm(e, env); ok {
@@ -102,6 +106,8 @@ func (p *Protector) Check(path string) ProtectKind {
 }
 
 func (p *Protector) checkNorm(n string) ProtectKind {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	if n == "" {
 		return ProtectNone
 	}
@@ -153,6 +159,8 @@ func (p *Protector) exceptionBelow(n string) bool {
 // inside a protected subtree also returns true, since everything below it is
 // protected.
 func (p *Protector) HasProtectedDescendant(path string) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	n := NormalizePath(path)
 	if n == "" {
 		return false
@@ -186,4 +194,23 @@ func hasGitComponent(n string) bool {
 		}
 	}
 	return false
+}
+
+// SetExtra replaces the user-defined protected subtrees (env vars allowed;
+// entries that expand to nothing are skipped). It takes effect immediately and
+// is safe to call concurrently with Check and HasProtectedDescendant.
+func (p *Protector) SetExtra(extra []string) {
+	var out []string
+	env := p.env
+	if env == nil {
+		env = func(string) string { return "" }
+	}
+	for _, e := range extra {
+		if n, ok := expandNorm(e, env); ok {
+			out = append(out, n)
+		}
+	}
+	p.mu.Lock()
+	p.extra = out
+	p.mu.Unlock()
 }

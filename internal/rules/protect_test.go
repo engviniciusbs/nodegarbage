@@ -178,3 +178,36 @@ func TestExpandEnv(t *testing.T) {
 		t.Fatalf("lone percent: %q %v", got, ok)
 	}
 }
+
+func TestSetExtraAppliesImmediately(t *testing.T) {
+	p := newTestProtector(`D:\old`)
+	expectKind(t, p, `D:\old\x`, ProtectSubtree)
+	expectKind(t, p, `D:\new\x`, ProtectNone)
+	p.SetExtra([]string{`D:\new`, `%USERPROFILE%\keepme`, `%EMPTY%\skipped`, ""})
+	expectKind(t, p, `D:\new\x`, ProtectSubtree)
+	expectKind(t, p, `C:\Users\dev\keepme\a`, ProtectSubtree)
+	expectKind(t, p, `D:\old\x`, ProtectNone) // replaced, not appended
+	if !p.HasProtectedDescendant(`D:\`) {
+		t.Fatal("HasProtectedDescendant must see new extras")
+	}
+	p.SetExtra(nil)
+	expectKind(t, p, `D:\new\x`, ProtectNone)
+	expectKind(t, p, `C:\Windows\x`, ProtectSubtree) // builtin untouched
+}
+
+func TestSetExtraConcurrentWithCheck(t *testing.T) {
+	p := newTestProtector()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 500; i++ {
+			p.SetExtra([]string{`D:\a`})
+			p.SetExtra(nil)
+		}
+	}()
+	for i := 0; i < 500; i++ {
+		p.Check(`D:\a\b`)
+		p.HasProtectedDescendant(`D:\`)
+	}
+	<-done
+}
