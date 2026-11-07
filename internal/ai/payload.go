@@ -245,6 +245,11 @@ func collect(s ScanData, minUnknown int64) (classified, unknown []rawItem) {
 			needExts = append(needExts, len(unknown)-1)
 			continue
 		}
+		// Only rule-classified items are listed (spec §5); a plain protected
+		// node (no rule matched it) is neither classified nor unknown.
+		if c.RuleID == "" && c.Source != rules.SourceRule && c.Source != rules.SourceAI {
+			continue
+		}
 		// Maximal: the parent (unless it is the volume root) does not carry the same classification.
 		if nd.Parent != t.Root && nd.Parent != tree.NoNode && cls[nd.Parent] == c {
 			continue

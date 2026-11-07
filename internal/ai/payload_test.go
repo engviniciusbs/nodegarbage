@@ -317,3 +317,23 @@ func TestShortNameWholeComponentOnly(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+// Classified lists rule-classified items only (spec §5): a protected node
+// without a rule (e.g. $Recycle.Bin) is neither classified nor unknown.
+func TestClassifiedExcludesPlainProtected(t *testing.T) {
+	tr := build(dir{"$Recycle.Bin", 700 * mb}, dir{"p", 0}, dir{`p\node_modules`, 10 * mb})
+	p, _ := BuildPayload(scan(tr), NewAnonymizer("x", nil), PayloadOptions{MinUnknownBytes: 1})
+	for _, it := range p.Classified {
+		if it.RuleID == "" || strings.Contains(it.Path, "Recycle") {
+			t.Errorf("plain protected node in classified: %+v", it)
+		}
+	}
+	for _, it := range p.Unknown {
+		if strings.Contains(it.Path, "Recycle") {
+			t.Errorf("protected node in unknown: %+v", it)
+		}
+	}
+	if len(p.Classified) != 1 || p.Classified[0].RuleID != "node-modules" {
+		t.Errorf("classified = %+v", p.Classified)
+	}
+}
