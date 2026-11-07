@@ -13,6 +13,7 @@
     total,
     focused,
     selected,
+    hovered = false,
     ontoggle,
     onfocus,
     onopen,
@@ -22,6 +23,7 @@
     total: number
     focused: boolean
     selected: boolean
+    hovered?: boolean
     ontoggle: () => void
     onfocus: () => void
     onopen: () => void
@@ -44,7 +46,9 @@
   style="position:absolute;left:0;right:0;top:{index * ROW_HEIGHT}px;height:{ROW_HEIGHT}px"
   class="flex items-center gap-3 rounded-md px-2 text-sm text-primary outline-none hover:bg-black/5 focus-visible:ring-2 focus-visible:ring-accent {focused
     ? 'bg-accent/10'
-    : ''}"
+    : hovered
+      ? 'bg-black/5'
+      : ''}"
   onclick={onfocus}
   ondblclick={onopen}
 >

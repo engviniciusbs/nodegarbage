@@ -11,6 +11,8 @@ export const results = $state({
   path: [] as NodeDTO[],
   children: [] as NodeDTO[],
   categoryFilter: null as string | null,
+  /** Row highlighted by pointer hover on the treemap; never moves DOM focus. */
+  hoverId: null as number | null,
   loading: false,
   error: '',
 })
@@ -55,6 +57,7 @@ export async function openNode(id: number): Promise<void> {
   const kids = await fetchChildren(id)
   if (!kids) return
   nav.pendingFocus = { id: null }
+  results.hoverId = null
   results.path = [...results.path, node]
   results.currentId = id
   results.children = kids
@@ -68,6 +71,7 @@ export async function goUp(index: number): Promise<void> {
   const kids = await fetchChildren(id)
   if (!kids) return
   nav.pendingFocus = { id: results.path[i]?.id ?? null }
+  results.hoverId = null
   results.path = path
   results.currentId = id
   results.children = kids

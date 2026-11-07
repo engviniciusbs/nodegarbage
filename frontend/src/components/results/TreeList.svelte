@@ -94,6 +94,7 @@
         total={items.length}
         focused={range.start + k === focusedIndex}
         selected={selection.paths.has(n.path)}
+        hovered={results.hoverId === n.id}
         ontoggle={() => toggle(n)}
         onfocus={() => (focusedId = n.id)}
         onopen={() => n.hasChildren && openNode(n.id)}

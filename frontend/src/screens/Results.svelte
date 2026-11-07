@@ -3,6 +3,7 @@
   import SummaryBar from '../components/results/SummaryBar.svelte'
   import Breadcrumb from '../components/results/Breadcrumb.svelte'
   import TreeList from '../components/results/TreeList.svelte'
+  import Treemap from '../components/treemap/Treemap.svelte'
   import DetailsPanel from '../components/results/DetailsPanel.svelte'
   import SelectionBar from '../components/results/SelectionBar.svelte'
   import Button from '../components/ui/Button.svelte'
@@ -12,7 +13,7 @@
   import { GetSummary } from '$lib/api'
   import type { SummaryDTO } from '$lib/api'
   import { route } from '$lib/route.svelte'
-  import { results, loadVolume, refresh, toggleCategory } from '$lib/stores/results.svelte'
+  import { results, nav, loadVolume, openNode, refresh, toggleCategory } from '$lib/stores/results.svelte'
   import { strings } from '$lib/strings'
 
   /** Task 21 plugs the "Limpar" button into the selection bar. */
@@ -50,7 +51,7 @@
   <div class="flex h-full min-h-0 flex-col gap-3">
     {#if summary}<SummaryBar {summary} />{/if}
     <Breadcrumb volume={results.volume} path={results.path} />
-    <div class="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[1fr_20rem]">
+    <div class="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_20rem]">
       <div class="min-h-64 min-w-0">
         {#if results.error}
           <ErrorState message={results.error} onretry={refresh} />
@@ -72,7 +73,24 @@
           {/key}
         {/if}
       </div>
-      <DetailsPanel node={focused} />
+      <!-- lg: treemap stacks above details in the right column; xl: wrapper dissolves into 3 columns. -->
+      <div class="flex min-h-0 min-w-0 flex-col gap-3 xl:contents">
+        <div class="h-56 min-w-0 shrink-0 overflow-hidden xl:h-full xl:min-h-0" aria-hidden="true">
+          {#if items.length > 0 && !results.error}
+            <Treemap
+              nodes={items}
+              {focusedId}
+              onOpen={(id) => {
+                nav.pendingFocus = { id: null }
+                void openNode(id)
+              }}
+              onSelect={(id) => (focusedId = id)}
+              onHover={(id) => (results.hoverId = id)}
+            />
+          {/if}
+        </div>
+        <DetailsPanel node={focused} />
+      </div>
     </div>
     <SelectionBar actions={barActions} />
   </div>
