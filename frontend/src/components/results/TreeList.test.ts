@@ -143,3 +143,18 @@ describe('DetailsPanel', () => {
     expect(m.ListFiles).toHaveBeenCalledWith('C:\\', 3)
   })
 })
+
+describe('TreeList focus request', () => {
+  it('scrolls to and focuses an off-screen row without navigating', async () => {
+    render(TreeList, { items: many(500) })
+    expect(document.querySelector('[data-index="400"]')).toBeNull()
+    results.focusRequest = 401
+    await tick()
+    await tick()
+    const row = document.querySelector<HTMLElement>('[data-index="400"]')
+    expect(row).not.toBeNull()
+    expect(document.activeElement).toBe(row)
+    expect(results.focusRequest).toBeNull()
+    expect(results.currentId).toBe(-1)
+  })
+})

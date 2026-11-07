@@ -27,6 +27,11 @@
   let hoverId = $state<number | null>(null)
   let theme = $state(0) // bumped when the OS colour scheme flips, to redraw with fresh tokens
 
+  $effect(() => {
+    void nodes
+    hoverId = null
+  })
+
   const rects = $derived(computeTreemap(nodes, width, height))
   const byId = $derived(new Map(nodes.map((n) => [n.id, n])))
 

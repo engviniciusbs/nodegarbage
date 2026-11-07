@@ -45,6 +45,14 @@
     el.querySelector<HTMLElement>(`[data-index="${idx}"]`)?.focus()
   }
 
+  $effect(() => {
+    const id = results.focusRequest
+    if (id === null) return
+    const idx = items.findIndex((n) => n.id === id)
+    results.focusRequest = null
+    if (idx >= 0) void moveTo(idx)
+  })
+
   function up() {
     if (results.path.length) goUp(results.path.length - 1)
   }

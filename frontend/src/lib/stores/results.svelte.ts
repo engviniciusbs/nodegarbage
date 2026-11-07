@@ -13,6 +13,8 @@ export const results = $state({
   categoryFilter: null as string | null,
   /** Row highlighted by pointer hover on the treemap; never moves DOM focus. */
   hoverId: null as number | null,
+  /** One-shot request (e.g. treemap leaf click): the mounted TreeList scrolls to and focuses this row. */
+  focusRequest: null as number | null,
   loading: false,
   error: '',
 })

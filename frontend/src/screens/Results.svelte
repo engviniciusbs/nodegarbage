@@ -13,7 +13,7 @@
   import { GetSummary } from '$lib/api'
   import type { SummaryDTO } from '$lib/api'
   import { route } from '$lib/route.svelte'
-  import { results, nav, loadVolume, openNode, refresh, toggleCategory } from '$lib/stores/results.svelte'
+  import { results, loadVolume, openNode, refresh, toggleCategory } from '$lib/stores/results.svelte'
   import { strings } from '$lib/strings'
 
   /** Task 21 plugs the "Limpar" button into the selection bar. */
@@ -80,11 +80,8 @@
             <Treemap
               nodes={items}
               {focusedId}
-              onOpen={(id) => {
-                nav.pendingFocus = { id: null }
-                void openNode(id)
-              }}
-              onSelect={(id) => (focusedId = id)}
+              onOpen={(id) => void openNode(id)}
+              onSelect={(id) => (results.focusRequest = id)}
               onHover={(id) => (results.hoverId = id)}
             />
           {/if}
