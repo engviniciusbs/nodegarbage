@@ -228,7 +228,8 @@ func TestSave100kNodes(t *testing.T) {
 	}
 	d := time.Since(start)
 	t.Logf("saved %d nodes in %v", n, d)
-	if d > 5*time.Second {
+	// The time limit only applies without -race; the race detector slows SQLite ~10x.
+	if !raceEnabled && d > 5*time.Second {
 		t.Fatalf("too slow: %v", d)
 	}
 	got, err := s.LoadSnapshot(context.Background(), `C:\`)
