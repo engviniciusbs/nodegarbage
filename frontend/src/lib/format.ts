@@ -31,3 +31,21 @@ export function formatDate(unixSec: number): string {
 export function formatCount(n: number): string {
   return nf0.format(n)
 }
+
+/** Unix seconds -> hh:mm (local time, 24 h). */
+export function formatTime(unixSec: number): string {
+  const d = new Date(unixSec * 1000)
+  const p = (x: number) => String(x).padStart(2, '0')
+  return `${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** Milliseconds -> "2 min 41 s", "45 s", "1 h 3 min". */
+export function formatDuration(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  if (h > 0) return m > 0 ? `${h} h ${m} min` : `${h} h`
+  if (m > 0) return sec > 0 ? `${m} min ${sec} s` : `${m} min`
+  return `${sec} s`
+}

@@ -1,9 +1,13 @@
 <script lang="ts">
   import { untrack } from 'svelte'
+  import ResultsHeader from '../components/results/ResultsHeader.svelte'
   import SummaryBar from '../components/results/SummaryBar.svelte'
   import Breadcrumb from '../components/results/Breadcrumb.svelte'
+  import ViewTabs, { type ResultsView } from '../components/results/ViewTabs.svelte'
+  import ListHeader from '../components/results/ListHeader.svelte'
   import TreeList from '../components/results/TreeList.svelte'
   import Treemap from '../components/treemap/Treemap.svelte'
+  import TreemapLegend from '../components/treemap/TreemapLegend.svelte'
   import DetailsPanel from '../components/results/DetailsPanel.svelte'
   import SelectionBar from '../components/results/SelectionBar.svelte'
   import CleanAction from '../components/clean/CleanAction.svelte'
@@ -18,8 +22,11 @@
   import { clean } from '$lib/stores/clean.svelte'
   import { strings } from '$lib/strings'
 
+  const PANEL_ID = 'results-view'
+
   let summary = $state<SummaryDTO | undefined>()
   let focusedId = $state<number | null>(null)
+  let view = $state<ResultsView>('list')
 
   $effect(() => {
     const volume = route.volume
@@ -52,24 +59,40 @@
     results.categoryFilter ? results.children.filter((c) => c.category === results.categoryFilter) : results.children,
   )
   const focused = $derived(items.find((n) => n.id === focusedId) ?? items[0])
+
+  // Treemap leaf click: in the map tab there is no visible list, so focus the item for the details panel directly.
+  function selectFromMap(id: number) {
+    focusedId = id
+    results.focusRequest = id
+  }
 </script>
 
-{#if !route.volume}
-  <EmptyState title={strings.results.emptyVolume} />
-{:else}
-  <div class="flex h-full min-h-0 flex-col gap-3">
+<!-- The page never scrolls here: only the list (or map) and the details panel scroll inside. -->
+<div class="flex h-full min-h-0 flex-col">
+  <ResultsHeader volume={route.volume} />
+  {#if !route.volume}
+    <EmptyState title={strings.results.emptyVolume} />
+  {:else}
     {#if summary}<SummaryBar {summary} />{/if}
-    <Breadcrumb volume={results.volume} path={results.path} />
-    <div class="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_20rem]">
-      <div class="min-h-64 min-w-0">
+    <div class="flex shrink-0 items-center justify-between gap-3 px-6 pt-3.5 pb-2">
+      <Breadcrumb volume={results.volume} path={results.path} />
+      <ViewTabs bind:view controls={PANEL_ID} />
+    </div>
+    <div
+      class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_300px] gap-4 px-6 pb-3 min-[1200px]:grid-cols-[minmax(0,1fr)_360px]"
+    >
+      <div
+        id={PANEL_ID}
+        role="tabpanel"
+        aria-labelledby="results-tab-{view}"
+        class="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-stroke bg-card"
+      >
         {#if results.error}
           <ErrorState message={results.error} onretry={refresh} />
         {:else if results.loading && results.children.length === 0}
-          <Skeleton lines={8} />
+          <div class="p-3"><Skeleton lines={8} /></div>
         {:else if items.length === 0}
-          <EmptyState
-            title={results.categoryFilter ? strings.results.emptyFiltered : strings.results.emptyFolder}
-          >
+          <EmptyState title={results.categoryFilter ? strings.results.emptyFiltered : strings.results.emptyFolder}>
             {#snippet action()}
               {#if results.categoryFilter}
                 <Button onclick={() => toggleCategory(results.categoryFilter!)}>{strings.results.clearFilter}</Button>
@@ -77,29 +100,33 @@
             {/snippet}
           </EmptyState>
         {:else}
-          {#key `${results.currentId}|${results.categoryFilter}`}
-            <TreeList {items} bind:focusedId />
-          {/key}
+          <!-- The list stays mounted (hidden) in the map tab: focus, scroll and focus requests survive the switch. -->
+          <div class="list-panel flex min-h-0 flex-1 flex-col" hidden={view !== 'list'} data-view="list">
+            <ListHeader />
+            {#key `${results.currentId}|${results.categoryFilter}`}
+              <TreeList {items} bind:focusedId />
+            {/key}
+          </div>
+          {#if view === 'map'}
+            <div class="flex min-h-0 flex-1 flex-col" data-view="map">
+              <div class="relative m-2.5 min-h-0 flex-1">
+                <Treemap
+                  nodes={items}
+                  {focusedId}
+                  onOpen={(id) => void openNode(id)}
+                  onSelect={selectFromMap}
+                  onHover={(id) => (results.hoverId = id)}
+                />
+              </div>
+              <TreemapLegend />
+            </div>
+          {/if}
         {/if}
       </div>
-      <!-- lg: treemap stacks above details in the right column; xl: wrapper dissolves into 3 columns. -->
-      <div class="flex min-h-0 min-w-0 flex-col gap-3 xl:contents">
-        <div class="h-56 min-w-0 shrink-0 overflow-hidden xl:h-full xl:min-h-0" aria-hidden="true">
-          {#if items.length > 0 && !results.error}
-            <Treemap
-              nodes={items}
-              {focusedId}
-              onOpen={(id) => void openNode(id)}
-              onSelect={(id) => (results.focusRequest = id)}
-              onHover={(id) => (results.hoverId = id)}
-            />
-          {/if}
-        </div>
-        <DetailsPanel node={focused} />
-      </div>
+      <DetailsPanel node={focused} />
     </div>
     <SelectionBar>
       {#snippet actions()}<CleanAction />{/snippet}
     </SelectionBar>
-  </div>
-{/if}
+  {/if}
+</div>

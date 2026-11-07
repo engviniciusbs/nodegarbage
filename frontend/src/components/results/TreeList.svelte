@@ -90,7 +90,7 @@
   role="tree"
   aria-label={strings.results.listLabel}
   tabindex={focusedRendered ? -1 : 0}
-  class="relative h-full min-h-0 overflow-y-auto"
+  class="relative min-h-0 flex-1 overflow-y-auto focus-visible:-outline-offset-2"
   onscroll={() => (scrollTop = el?.scrollTop ?? 0)}
   {onkeydown}
 >

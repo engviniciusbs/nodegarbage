@@ -31,6 +31,16 @@
 
   const blocked = $derived(blockedReason(node))
   const verdict = $derived((node.verdict in strings.verdict ? node.verdict : 'unknown') as Verdict)
+  // Focused wins over selected, which wins over the treemap hover highlight.
+  const tone = $derived(
+    focused
+      ? 'bg-accent-focus shadow-[inset_2px_0_0_var(--accent)]'
+      : selected
+        ? 'bg-accent-tint'
+        : hovered
+          ? 'bg-hover'
+          : 'hover:bg-hover-soft',
+  )
 </script>
 
 <!-- Keyboard handling lives on the parent tree (roving focus); the row only reacts to the pointer. -->
@@ -44,18 +54,14 @@
   tabindex={focused ? 0 : -1}
   data-index={index}
   style="position:absolute;left:0;right:0;top:{index * ROW_HEIGHT}px;height:{ROW_HEIGHT}px"
-  class="flex items-center gap-3 rounded-md px-2 text-sm text-primary outline-none hover:bg-black/5 focus-visible:ring-2 focus-visible:ring-accent {focused
-    ? 'bg-accent/10'
-    : hovered
-      ? 'bg-black/5'
-      : ''}"
+  class="list-grid border-b border-stroke-soft text-[13px] text-primary outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent {tone}"
   onclick={onfocus}
   ondblclick={onopen}
 >
   <input
     type="checkbox"
     tabindex="-1"
-    class="size-4 shrink-0 accent-[var(--accent)]"
+    class="m-0 size-4"
     aria-label={strings.results.select(node.name)}
     title={blocked ? strings.results.blocked[blocked] : undefined}
     disabled={blocked !== ''}
@@ -63,18 +69,17 @@
     onclick={(e) => e.stopPropagation()}
     onchange={ontoggle}
   />
-  <span class="flex min-w-0 flex-1 items-center gap-2">
-    <span class="truncate font-medium">{node.name}</span>
-    {#if node.link}<Icon name="link" size={14} /><span class="sr-only">{strings.results.link}</span>{/if}
-    {#if node.cloud}<Icon name="cloud" size={14} /><span class="sr-only">{strings.results.cloud}</span>{/if}
-    {#if node.denied}<Icon name="denied" size={14} /><span class="sr-only">{strings.results.denied}</span>{/if}
+  <span class="flex min-w-0 items-center gap-2">
+    <span class="shrink-0 text-muted"><Icon name={node.hasChildren ? 'folder' : 'file'} size={16} /></span>
+    <span class="truncate">{node.name}</span>
+    {#if node.link}<span class="shrink-0 text-muted"><Icon name="link" size={14} /></span><span class="sr-only">{strings.results.link}</span>{/if}
+    {#if node.cloud}<span class="shrink-0 text-muted"><Icon name="cloud" size={14} /></span><span class="sr-only">{strings.results.cloud}</span>{/if}
+    {#if node.denied}<span class="shrink-0 text-muted"><Icon name="denied" size={14} /></span><span class="sr-only">{strings.results.denied}</span>{/if}
     {#if node.inactive}
-      <span class="shrink-0 rounded-sm bg-black/5 px-1.5 py-0.5 text-xs text-muted">{strings.results.inactive}</span>
+      <span class="shrink-0 rounded-full border border-inactive-border px-1.5 py-px text-[11px] whitespace-nowrap text-warn-text">{strings.results.inactive}</span>
     {/if}
   </span>
-  <span class="hidden w-20 shrink-0 text-right text-xs text-muted tabular-nums sm:block">
-    {strings.results.files(formatCount(node.files))}
-  </span>
-  <span class="w-24 shrink-0 text-right tabular-nums">{formatBytes(node.size)}</span>
-  <span class="w-40 shrink-0"><VerdictBadge {verdict} source={node.source} /></span>
+  <span class="text-right font-semibold tabular-nums">{formatBytes(node.size)}</span>
+  <span class="col-files text-right text-muted tabular-nums">{formatCount(node.files)}</span>
+  <span class="flex min-w-0"><VerdictBadge {verdict} source={node.source} compact /></span>
 </div>

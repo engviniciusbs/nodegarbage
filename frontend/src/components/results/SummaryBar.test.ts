@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { SummaryDTO } from '$lib/api'
 import SummaryBar from './SummaryBar.svelte'
 import { results } from '$lib/stores/results.svelte'
+import { strings } from '$lib/strings'
 
 const summary = {
   volume: 'C:\\',
@@ -23,9 +24,12 @@ beforeEach(() => {
 describe('SummaryBar', () => {
   it('shows formatted safe, caution and protected totals', () => {
     render(SummaryBar, { summary })
-    expect(screen.getByText('3,0 GB recuperáveis com segurança')).toBeInTheDocument()
-    expect(screen.getByText('512,0 MB exigem cuidado')).toBeInTheDocument()
-    expect(screen.getByText('2,0 GB protegidos por regras')).toBeInTheDocument()
+    // Each figure is a big number followed by its label, read as one line.
+    const fig = (label: string) => screen.getByText(label).closest('p')
+    expect(fig(strings.results.safeLabel)).toHaveTextContent('3,0 GB recuperáveis com segurança')
+    expect(fig(strings.results.cautionLabel)).toHaveTextContent('512,0 MB exigem cuidado')
+    expect(fig(strings.results.keepLabel)).toHaveTextContent('2,0 GB protegidos por regras')
+    expect(screen.getByRole('region', { name: strings.results.summaryLabel })).toBeInTheDocument()
   })
 
   it('category chip toggles categoryFilter with aria-pressed', async () => {

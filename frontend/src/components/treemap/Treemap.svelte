@@ -18,7 +18,8 @@
     onHover: (id: number | null) => void
   } = $props()
 
-  const VERDICT_TOKEN: Record<string, string> = { safe: '--safe', caution: '--warn', keep: '--keep' }
+  // Tile tints (tokens.css); anything else (unknown, AI-less) uses --tile-unknown.
+  const VERDICT_TOKEN: Record<string, string> = { safe: '--tile-safe', caution: '--tile-caution', keep: '--tile-keep' }
 
   let canvas: HTMLCanvasElement | undefined = $state()
   let width = $state(0)
@@ -66,22 +67,17 @@
     ctx.clearRect(0, 0, width, height)
     const css = getComputedStyle(document.documentElement)
     const token = (name: string) => css.getPropertyValue(name).trim()
-    const surface = token('--surface')
     const text = token('--text-primary')
+    const muted = token('--text-muted')
     const accent = token('--accent')
     const font = token('--font-sans') || 'sans-serif'
 
+    // The layout leaves a 2px gap between tiles; the canvas background (--tile-gap) shows through it.
     for (const r of rects) {
       const n = byId.get(r.id)
-      const t = n && VERDICT_TOKEN[n.verdict]
-      ctx.globalAlpha = t ? 0.75 : 0.35
-      ctx.fillStyle = t ? token(t) : accent
-      ctx.fillRect(r.x, r.y, r.w, r.h)
-      ctx.globalAlpha = 1
-      ctx.strokeStyle = surface
-      ctx.lineWidth = 1
-      ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1)
-      if (n && r.w > 60 && r.h > 18) label(ctx, n, r, text, font)
+      ctx.fillStyle = token((n && VERDICT_TOKEN[n.verdict]) || '--tile-unknown')
+      tile(ctx, r)
+      if (n && r.w > 60 && r.h > 22) label(ctx, n, r, text, muted, font)
     }
     for (const id of [focusedId, hoverId]) {
       const r = rects.find((x) => x.id === id)
@@ -92,6 +88,14 @@
     }
   })
 
+  /** Rounded tile (4px, as in the mockup) where the canvas supports it. */
+  function tile(ctx: CanvasRenderingContext2D, r: { x: number; y: number; w: number; h: number }) {
+    if (typeof ctx.roundRect !== 'function') return ctx.fillRect(r.x, r.y, r.w, r.h)
+    ctx.beginPath()
+    ctx.roundRect(r.x, r.y, r.w, r.h, Math.min(4, r.w / 2, r.h / 2))
+    ctx.fill()
+  }
+
   function fit(ctx: CanvasRenderingContext2D, s: string, max: number): string {
     if (ctx.measureText(s).width <= max) return s
     let end = s.length
@@ -99,15 +103,23 @@
     return s.slice(0, end) + '…'
   }
 
-  function label(ctx: CanvasRenderingContext2D, n: NodeDTO, r: { x: number; y: number; w: number; h: number }, color: string, font: string) {
-    ctx.fillStyle = color
+  function label(
+    ctx: CanvasRenderingContext2D,
+    n: NodeDTO,
+    r: { x: number; y: number; w: number; h: number },
+    color: string,
+    muted: string,
+    font: string,
+  ) {
     ctx.textBaseline = 'top'
-    const max = r.w - 12
+    const max = r.w - 16
+    ctx.fillStyle = color
     ctx.font = `600 12px ${font}`
-    ctx.fillText(fit(ctx, n.name, max), r.x + 6, r.y + 5, max)
-    if (r.h > 34) {
+    ctx.fillText(fit(ctx, n.name, max), r.x + 8, r.y + 6, max)
+    if (r.h > 38) {
+      ctx.fillStyle = muted
       ctx.font = `12px ${font}`
-      ctx.fillText(fit(ctx, formatBytes(n.size), max), r.x + 6, r.y + 21, max)
+      ctx.fillText(fit(ctx, formatBytes(n.size), max), r.x + 8, r.y + 22, max)
     }
   }
 
@@ -139,7 +151,7 @@
 <canvas
   bind:this={canvas}
   aria-hidden="true"
-  class="block size-full {hoverId === null ? '' : 'cursor-pointer'}"
+  class="absolute top-0 left-0 block rounded-sm bg-tile-gap {hoverId === null ? '' : 'cursor-pointer'}"
   style="width:{width}px;height:{height}px"
   onpointermove={move}
   onpointerleave={leave}
