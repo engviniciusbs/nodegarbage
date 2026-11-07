@@ -21,7 +21,7 @@
     <h3 class="text-sm font-semibold text-primary">{strings.clean.itemsTitle(plan.items.length)}</h3>
     <ul aria-label={strings.clean.itemsLabel} class="flex max-h-64 flex-col gap-1 overflow-auto">
       {#each [...risky, ...shownSafe] as it (it.path)}
-        <li class="glass flex flex-col gap-1 rounded-md px-3 py-2 text-sm">
+        <li class="flex flex-col gap-1 rounded-sm border border-stroke bg-field px-3 py-2 text-sm">
           <div class="flex items-center justify-between gap-3">
             <span class="min-w-0 break-all font-mono text-xs text-primary">{it.path}</span>
             <span class="flex shrink-0 items-center gap-2">
@@ -55,7 +55,7 @@
     <h3 class="text-sm font-semibold text-primary">{strings.clean.refusedTitle(plan.refused.length)}</h3>
     <ul aria-label={strings.clean.refusedLabel} class="flex max-h-40 flex-col gap-1 overflow-auto">
       {#each plan.refused as r (r.path)}
-        <li class="rounded-md bg-black/5 px-3 py-2 text-sm">
+        <li class="rounded-sm bg-well px-3 py-2 text-sm">
           <span class="break-all font-mono text-xs text-primary">{r.path}</span>
           <p class="text-xs text-muted">{refusalText(r.reason)}</p>
         </li>

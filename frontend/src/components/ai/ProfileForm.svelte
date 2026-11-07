@@ -73,7 +73,7 @@
     busy = ''
   }
 
-  const field = 'w-full rounded-md border border-glass-border bg-white/70 px-3 py-2 text-sm text-primary'
+  const field = 'w-full rounded-sm border border-stroke bg-field px-3 py-1.5 text-[13px] text-primary'
 </script>
 
 <form class="flex flex-col gap-3" onsubmit={(e) => { e.preventDefault(); void run('save') }} novalidate>

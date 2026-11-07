@@ -24,7 +24,7 @@
     <label class="flex min-w-0 flex-1 flex-col gap-1 text-sm text-primary">
       {inputLabel}
       <input
-        class="w-full rounded-md border border-glass-border bg-white/70 px-3 py-2 text-sm text-primary"
+        class="w-full rounded-sm border border-stroke bg-field px-3 py-1.5 text-[13px] text-primary"
         bind:value={draft}
         onkeydown={(e) => {
           if (e.key === 'Enter') {
@@ -41,7 +41,7 @@
   {:else}
     <ul aria-label={listLabel} class="flex flex-wrap gap-2">
       {#each items as v (v)}
-        <li class="glass flex items-center gap-1 rounded-md py-1 pl-3 pr-1 text-sm text-primary">
+        <li class="flex items-center gap-1 rounded-sm border border-stroke bg-field py-1 pr-1 pl-3 text-sm text-primary">
           <span class="break-all font-mono text-xs">{v}</span>
           <Button variant="ghost" class="!px-2 !py-0.5" aria-label={strings.settings.remove(v)} onclick={() => (items = items.filter((x) => x !== v))}>×</Button>
         </li>
