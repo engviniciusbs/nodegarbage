@@ -1,0 +1,52 @@
+- id: python.pycache
+  name: __pycache__
+  category: build-artifact
+  match:
+    dirname: __pycache__
+  verdict: safe
+  regenerable: o Python recria ao executar
+  action: delete_dir
+  explain: Bytecode compilado que o Python gera sozinho. Pode apagar, ele volta na próxima execução.
+
+- id: python.venv
+  name: Ambiente virtual (.venv)
+  category: build-artifact
+  match:
+    dirname: .venv
+    sibling: pyproject.toml
+  verdict: caution
+  regenerable: uv sync ou pip install
+  action: delete_dir
+  explain: Ambiente virtual do projeto. Dá para recriar, mas só se as dependências estiverem declaradas no pyproject.toml; pacotes instalados na mão se perdem.
+
+- id: python.venv_requirements
+  name: Ambiente virtual (.venv)
+  category: build-artifact
+  match:
+    dirname: .venv
+    sibling: requirements.txt
+  verdict: caution
+  regenerable: pip install -r requirements.txt
+  action: delete_dir
+  explain: Ambiente virtual do projeto. Dá para recriar com pip install -r requirements.txt, mas só se o arquivo estiver completo; pacotes instalados na mão se perdem.
+
+- id: python.pip_cache
+  name: Cache do pip
+  category: pkg-cache
+  match:
+    path: '%LOCALAPPDATA%\pip\Cache'
+  verdict: safe
+  regenerable: pip install
+  action: delete_dir
+  explain: Pacotes e wheels baixados pelo pip. O próximo pip install baixa de novo o que faltar.
+
+- id: python.uv_cache
+  name: Cache do uv
+  category: pkg-cache
+  match:
+    path: '%LOCALAPPDATA%\uv\cache'
+  verdict: safe
+  regenerable: uv sync
+  action: manual
+  command: uv cache clean
+  explain: Cache de pacotes do uv. Use uv cache clean para limpar com segurança; ele é reconstruído conforme você instala pacotes.

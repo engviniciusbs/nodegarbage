@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Map tokens to Tailwind utilities (bg-surface, text-primary, text-accent, rounded-md, ...). */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-warn: var(--warn);
+  --color-warn-text: var(--warn-text);
+  --color-safe: var(--safe);
+  --color-keep: var(--keep);
+  --color-primary: var(--text-primary);
+  --color-muted: var(--text-muted);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --font-sans: "Segoe UI Variable", "Segoe UI", sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, monospace;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+/* Transparent so the Mica backdrop shows through; on Windows 10 the native
+   window is painted solid #F0F0F0 by main.go instead. */
+html,
+body {
+  margin: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

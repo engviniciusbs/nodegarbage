@@ -1,0 +1,20 @@
+- id: rust.target
+  name: target do Cargo
+  category: build-artifact
+  match:
+    dirname: target
+    sibling: Cargo.toml
+  verdict: safe
+  regenerable: cargo build
+  action: delete_dir
+  explain: Saída de compilação de um projeto Rust. Costuma ser enorme e o cargo build recria tudo, só com a compilação mais demorada na primeira vez.
+
+- id: rust.registry
+  name: Registry do Cargo
+  category: pkg-cache
+  match:
+    path: '%USERPROFILE%\.cargo\registry'
+  verdict: safe
+  regenerable: cargo fetch
+  action: delete_dir
+  explain: Índice e código-fonte das crates baixadas. O Cargo baixa de novo o que precisar no próximo build.

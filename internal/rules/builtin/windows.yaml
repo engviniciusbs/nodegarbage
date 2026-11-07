@@ -1,0 +1,36 @@
+- id: windows.user_temp
+  name: Temp do usuário
+  category: temp
+  match:
+    path: '%TEMP%'
+  verdict: safe
+  action: delete_contents
+  explain: Arquivos temporários dos seus programas. Pode limpar o conteúdo; o que estiver em uso no momento é pulado.
+
+- id: windows.system_temp
+  name: Temp do Windows
+  category: temp
+  match:
+    path: '%SystemRoot%\Temp'
+  verdict: safe
+  action: delete_contents
+  explain: Arquivos temporários do sistema e de instaladores. Limpar o conteúdo é seguro, itens em uso são ignorados.
+
+- id: windows.crashdumps
+  name: Despejos de falha (CrashDumps)
+  category: temp
+  match:
+    path: '%LOCALAPPDATA%\CrashDumps'
+  verdict: safe
+  action: delete_contents
+  explain: Dumps de memória deixados quando programas travam. Só servem para depurar falhas e podem ser grandes.
+
+- id: windows.update_download
+  name: Downloads do Windows Update
+  category: system
+  match:
+    path: '%SystemRoot%\SoftwareDistribution\Download'
+  verdict: caution
+  action: manual
+  command: Use Limpeza de Disco → Limpar arquivos do sistema
+  explain: Atualizações já baixadas pelo Windows Update. Fica dentro de uma pasta protegida, então a limpeza deve ser feita pela Limpeza de Disco do próprio Windows.

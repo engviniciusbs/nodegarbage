@@ -1,0 +1,29 @@
+- id: browsers.chrome_cache
+  name: Cache do Chrome
+  category: browser-cache
+  match:
+    path: '%LOCALAPPDATA%\Google\Chrome\User Data\Default\Cache'
+  verdict: safe
+  regenerable: o navegador recria ao navegar
+  action: delete_contents
+  explain: Cópias de páginas e imagens para abrir sites mais rápido. Limpar não mexe em senhas nem favoritos; só os sites carregam um pouco mais devagar na primeira visita.
+
+- id: browsers.edge_cache
+  name: Cache do Edge
+  category: browser-cache
+  match:
+    path: '%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Cache'
+  verdict: safe
+  regenerable: o navegador recria ao navegar
+  action: delete_contents
+  explain: Cópias de páginas e imagens para abrir sites mais rápido. Limpar não mexe em senhas nem favoritos, e o cache volta conforme você navega.
+
+- id: browsers.firefox_cache
+  name: Perfis do Firefox
+  category: browser-cache
+  match:
+    path: '%LOCALAPPDATA%\Mozilla\Firefox\Profiles'
+  verdict: caution
+  action: manual
+  command: about:preferences#privacy → Limpar dados
+  explain: Esta pasta guarda o cache do Firefox, mas fica junto de perfis e dados do navegador. Limpe pela tela de privacidade do próprio Firefox, sem apagar arquivos na mão.

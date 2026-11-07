@@ -1,0 +1,9 @@
+- id: android.avd
+  name: Emuladores Android (AVD)
+  category: system
+  match:
+    path: '%USERPROFILE%\.android\avd'
+  verdict: caution
+  action: manual
+  command: Excluir AVDs pelo Android Studio (Device Manager)
+  explain: Cada emulador Android guarda um disco virtual de vários GB. Apague os que não usa pelo Device Manager do Android Studio, para não deixar a configuração quebrada.

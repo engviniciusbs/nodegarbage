@@ -1,0 +1,74 @@
+/*
+ * Design tokens (spec §8). Components never use hex directly: only these
+ * custom properties (directly or through the Tailwind @theme mapping in app.css).
+ *
+ * CONTRAST NOTES (WCAG 2.1 AA: 4.5:1 normal text, 3:1 large text / UI / icons).
+ * Ratios were computed against the solid surface and against the glass panel
+ * (white @55% over the surface, i.e. ~#F8F8F8; over a darker Mica wallpaper
+ * the glass can fall to ~#D2D2D2, so margins below matter).
+ *
+ *   token            on surface #F0F0F0   on glass (light)   on glass (dark wallpaper)
+ *   --text-primary         ~15:1               16.7              11.8
+ *   --text-muted            7.0                 7.5               5.3
+ *   --accent                4.65                5.0               3.5   <- interactive only
+ *   --accent-hover          6.5                 7.0               4.9
+ *   --safe                  5.22                5.6               3.9
+ *   --keep                  5.4                 5.8               4.1   <- icon/tint only
+ *   --warn-text             5.28                5.7               4.0
+ *   white on --accent 5.3 ; white on --accent-hover 7.4 ; --text-primary on --warn 7.25
+ *
+ * Rules that follow:
+ *  - Body copy, labels, table cells: --text-primary (or --text-muted for helper text).
+ *  - --accent is for interactive elements (buttons, links, focus ring, selection),
+ *    never for long running text, because it drops below 4.5:1 on a dark-ish glass.
+ *  - Verdict colours (--safe, --keep, --warn) colour the icon and a tinted
+ *    background only; the verdict label is always --text-primary. State is never
+ *    conveyed by colour alone (icon + label).
+ *  - --warn is fill/icon only (text over it is --text-primary).
+ *  - --safe and --warn-text (R17: darkened to #137336 / #9A4F00) pass 4.5:1 as text on the
+ *    solid surface and on light glass; on a dark-wallpaper glass they fall to ~4.0, so
+ *    prefer --text-primary for text over glass and keep these for icons/tints there.
+ */
+:root {
+  --surface: #f0f0f0;
+  --glass: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --accent: #105bff;
+  --accent-hover: #0a47d1;
+  --warn: #fe8500;
+  --warn-text: #9a4f00;
+  --safe: #137336;
+  --keep: #5b6270;
+  --text-primary: #16181d;
+  --text-muted: #4b5160;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --blur: 20px;
+
+  --font-sans: "Segoe UI Variable", "Segoe UI", sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, monospace;
+}
+
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .glass {
+    background: var(--surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

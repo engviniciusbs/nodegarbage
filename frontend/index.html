@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <!-- Wails serves the app and /wails/*.js from one origin (wails.localhost) and
+         injects its bindings via WebView2 ExecuteScript, which CSP does not block.
+         ws://localhost/127.0.0.1 is only for `wails dev` (browser IPC socket, Vite HMR). -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:* ws://127.0.0.1:*; object-src 'none'; base-uri 'self'"/>
+    <title>NodeGarbage</title>
+</head>
+<body>
+<div id="app"></div>
+<script src="./src/main.ts" type="module"></script>
+</body>
+</html>

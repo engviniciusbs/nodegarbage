@@ -1,0 +1,3 @@
+# Go sources are LF everywhere (gofmt; .editorconfig end_of_line = lf),
+# also on Windows checkouts with core.autocrlf=true.
+*.go text eol=lf
