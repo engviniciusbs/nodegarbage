@@ -579,7 +579,7 @@ func TestInvalidAction(t *testing.T) {
 func TestRecheck(t *testing.T) {
 	d := newFakeDeps()
 	pl, _ := newTestPlanner(d)
-	dir := PlanItem{Path: `D:\proj\node_modules`, Size: 1, Class: clsSafeDir}
+	dir := PlanItem{Path: `D:\proj\node_modules`, Size: 1, Class: clsSafeDir, RuleAction: rules.ActionDeleteDir}
 	contents := PlanItem{Path: `D:\cache`, Size: 1, Class: clsSafeContents}
 
 	// Missing.
@@ -619,5 +619,47 @@ func TestRecheck(t *testing.T) {
 	d.exist(users.Path)
 	if got := pl.Recheck(users); got != ReasonContainsProtected {
 		t.Fatalf("contains protected: %q", got)
+	}
+}
+
+// An unclassified item planned while clean must still be refused by Recheck
+// once a .git appears: the delete_dir rewrite must not grant the exemption.
+func TestRecheckUnknownItemGainsGit(t *testing.T) {
+	d := newFakeDeps()
+	d.exist(`C:\p\stuff`)
+	pl, _ := newTestPlanner(d)
+	p, _ := pl.Plan([]Request{{Path: `C:\p\stuff`, Size: 1, Class: clsUnknown}}, ModePermanent, nil)
+	if len(p.Items) != 1 {
+		t.Fatalf("refused = %+v", p.Refused)
+	}
+	d.git[`c:\p\stuff`] = true
+	if got := pl.Recheck(p.Items[0]); got != ReasonContainsGit {
+		t.Fatalf("Recheck = %q, want contains_git", got)
+	}
+}
+
+// AI-sourced items never get the delete_dir .git exemption, in Plan or Recheck.
+func TestAISourcedNoGitExemption(t *testing.T) {
+	d := newFakeDeps()
+	d.exist(`C:\p\ai`, `C:\p\ai2`)
+	d.git[`c:\p\ai`] = true
+	pl, _ := newTestPlanner(d)
+	ai := rules.Classification{Verdict: rules.Safe, Source: rules.SourceAI}
+	aiDir := rules.Classification{Verdict: rules.Safe, Action: rules.ActionDeleteDir, Source: rules.SourceAI}
+	p, _ := pl.Plan([]Request{{Path: `C:\p\ai`, Size: 1, Class: aiDir}}, ModePermanent, nil)
+	if got := refusalReason(p, `C:\p\ai`); got != ReasonContainsGit {
+		t.Fatalf("plan ai delete_dir: %q", got)
+	}
+	p, _ = pl.Plan([]Request{{Path: `C:\p\ai2`, Size: 1, Class: ai}}, ModePermanent, nil)
+	if len(p.Items) != 1 {
+		t.Fatalf("refused = %+v", p.Refused)
+	}
+	d.git[`c:\p\ai2`] = true
+	if got := pl.Recheck(p.Items[0]); got != ReasonContainsGit {
+		t.Fatalf("Recheck ai = %q", got)
+	}
+	// A hand-built item claiming delete_dir without the rule origin is refused too.
+	if got := pl.Recheck(PlanItem{Path: `C:\p\ai`, Size: 1, Class: aiDir}); got != ReasonContainsGit {
+		t.Fatalf("Recheck ai delete_dir = %q", got)
 	}
 }

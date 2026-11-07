@@ -28,11 +28,15 @@ type Request struct {
 
 // PlanItem is an accepted item. Path is the canonical path (resolved through
 // junctions, symlinks and 8.3 names), which is what will be deleted.
+// Class.Action is the action to execute (an unclassified item becomes
+// delete_dir); RuleAction is the action as requested (empty for unclassified
+// items) and is what Recheck uses for the .git exemption.
 type PlanItem struct {
-	Path     string
-	Size     int64
-	Class    rules.Classification
-	Warnings []string
+	Path       string
+	Size       int64
+	Class      rules.Classification
+	RuleAction rules.Action
+	Warnings   []string
 }
 
 // Refusal is a rejected request. Path is the path as requested.

@@ -67,8 +67,8 @@ type binInfo struct {
 // failing check wins): keep verdict, manual action, unknown action
 // (invalid_action), negative size (invalid_size), Canonicalize (not_found),
 // Protector.Check on the canonical path, HasProtectedDescendant,
-// ContainsGit unless the action is delete_dir and the canonical path is the
-// requested one (no junction/symlink in between), scanned volume,
+// ContainsGit unless a rule (Source rule) matched the item with action
+// delete_dir and the canonical path is the requested one (no junction/symlink in between), scanned volume,
 // and in recycle mode a usable recycle bin. Items that pass are then
 // de-duplicated (an item equal to or inside another accepted item is refused
 // as duplicate; the outer one stays) and, in recycle mode, accounted per
@@ -193,7 +193,7 @@ func (pl *Planner) check(rq Request, mode Mode, bins map[string]binInfo) (string
 	}
 	norm := rules.NormalizePath(canon)
 	sameAsRequested := norm == rules.NormalizePath(rq.Path)
-	if reason := pl.safetyCheck(canon, cls.Action, sameAsRequested); reason != "" {
+	if reason := pl.safetyCheck(canon, gitExempt(cls.Source, cls.Action) && sameAsRequested); reason != "" {
 		return reason, candidate{}
 	}
 	vol := pl.deps.VolumeOf(canon)
@@ -212,19 +212,28 @@ func (pl *Planner) check(rq Request, mode Mode, bins map[string]binInfo) (string
 		}
 	}
 
+	ruleAction := cls.Action
 	if cls.Action == "" {
 		cls.Action = rules.ActionDeleteDir
 	}
-	item := PlanItem{Path: canon, Size: rq.Size, Class: cls}
+	item := PlanItem{Path: canon, Size: rq.Size, Class: cls, RuleAction: ruleAction}
 	if !sameAsRequested {
 		item.Warnings = append(item.Warnings, WarnCanonicalDiffers)
 	}
 	return "", candidate{norm: norm, vol: vol, item: item}
 }
 
+// gitExempt reports whether an item may contain .git: only when a rule (not
+// the AI, not an unclassified item rewritten to delete_dir) matched it with
+// action delete_dir.
+func gitExempt(src rules.Source, ruleAction rules.Action) bool {
+	return src == rules.SourceRule && ruleAction == rules.ActionDeleteDir
+}
+
 // safetyCheck runs the checks shared by Plan and Recheck on a canonical
-// path: Protector.Check, HasProtectedDescendant and ContainsGit.
-func (pl *Planner) safetyCheck(canon string, action rules.Action, sameAsRequested bool) string {
+// path: Protector.Check, HasProtectedDescendant and ContainsGit (skipped only
+// when gitExempt holds for the item itself).
+func (pl *Planner) safetyCheck(canon string, gitOK bool) string {
 	if pl.prot.Check(canon) != rules.ProtectNone {
 		return ReasonProtected
 	}
@@ -234,7 +243,7 @@ func (pl *Planner) safetyCheck(canon string, action rules.Action, sameAsRequeste
 	// The delete_dir exception trusts Class, which describes the requested
 	// path: it only holds if that path is the item itself (not a junction
 	// or symlink leading elsewhere, e.g. a "node_modules" link to a repo).
-	if (action != rules.ActionDeleteDir || !sameAsRequested) && pl.deps.ContainsGit(canon) {
+	if !gitOK && pl.deps.ContainsGit(canon) {
 		return ReasonContainsGit
 	}
 	return ""
@@ -254,7 +263,7 @@ func (pl *Planner) Recheck(it PlanItem) string {
 	if rules.NormalizePath(canon) != rules.NormalizePath(it.Path) {
 		return ReasonChanged
 	}
-	return pl.safetyCheck(canon, it.Class.Action, true)
+	return pl.safetyCheck(canon, gitExempt(it.Class.Source, it.RuleAction))
 }
 
 // Redeem returns the plan for planID if token matches and it has not
