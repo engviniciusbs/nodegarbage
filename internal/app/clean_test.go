@@ -282,7 +282,7 @@ func TestOnlyExecuteCleanDeletes(t *testing.T) {
 	for pass := 0; pass < 4; pass++ {
 		for i := 0; i < typ.NumMethod(); i++ {
 			m := typ.Method(i)
-			if m.Name == "Startup" || m.Name == "ExecuteClean" {
+			if m.Name == "ExecuteClean" {
 				continue
 			}
 			cur, _ := a.SaveAIProfile(AIProfileDTO{Name: "p", Kind: "anthropic", Model: "m"}, "k")

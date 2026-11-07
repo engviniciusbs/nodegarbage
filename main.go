@@ -151,7 +151,7 @@ func main() {
 		},
 		OnStartup: func(ctx context.Context) {
 			em.ctx.Store(&ctx)
-			a.Startup(ctx)
+			app.Startup(ctx, a)
 		},
 		Bind: []any{
 			a,

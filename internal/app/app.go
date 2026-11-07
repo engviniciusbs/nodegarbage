@@ -42,9 +42,12 @@ func New(d Deps) *App {
 	return &App{deps: d, sessions: map[string]*session{}}
 }
 
-// Startup é chamado quando o app inicia; guarda o contexto do runtime Wails e
-// carrega os snapshots salvos, reclassificando-os.
-func (a *App) Startup(ctx context.Context) {
+// Startup é chamado quando o app inicia (OnStartup do Wails); guarda o
+// contexto do runtime e carrega os snapshots salvos, reclassificando-os. É
+// uma função, não um método, para não ser vinculada ao frontend.
+func Startup(ctx context.Context, a *App) { a.startup(ctx) }
+
+func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.applyExtraProtected()
 	a.loadSnapshots()

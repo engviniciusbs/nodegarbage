@@ -2,7 +2,7 @@
  * The ONLY module that imports the generated Wails bindings (frontend/wailsjs,
  * gitignored; run `wails generate module` from the repo root to create it).
  * Everything else imports from '$lib/api' so tests can `vi.mock('$lib/api')`.
- * IsScanned and Startup are internal and intentionally not re-exported.
+ * IsScanned is internal and intentionally not re-exported.
  */
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 import type { app } from '../../wailsjs/go/models'
