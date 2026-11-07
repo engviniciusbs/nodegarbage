@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strings"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/engviniciusbs/nodegarbage/internal/cleaner"
 	"github.com/engviniciusbs/nodegarbage/internal/rules"
+	"github.com/engviniciusbs/nodegarbage/internal/scanner"
+	"github.com/engviniciusbs/nodegarbage/internal/tree"
 )
 
 // fakeCleanDeps canonicalizes every path to itself unless vanish is set.
@@ -330,4 +333,42 @@ func plausibleArg(t reflect.Type, pass int, profileID string) reflect.Value {
 		return v
 	}
 	return reflect.Zero(t)
+}
+
+// linkScanner adds a junction/symlink node (FlagLink) and a node below it.
+type linkScanner struct{}
+
+func (linkScanner) Scan(_ context.Context, root string, b *tree.Builder, _ *scanner.Progress) error {
+	r := b.AddDir(tree.NoNode, root, 0)
+	l := b.AddDir(r, "link", tree.FlagLink)
+	in := b.AddDir(l, "inside", 0)
+	b.SetOwnStats(in, 10, 1, 100)
+	ok := b.AddDir(r, "plain", 0)
+	b.SetOwnStats(ok, 10, 1, 100)
+	return nil
+}
+
+// A link node (or a node below one) is refused with reason "link": the
+// planner would otherwise canonicalize to the link TARGET and plan its deletion.
+func TestPlanCleanRefusesLinks(t *testing.T) {
+	a, _ := newTestApp(t, linkScanner{}, nil)
+	if err := a.StartScan([]string{`C:\`}); err != nil {
+		t.Fatal(err)
+	}
+	a.waitScan()
+	a.deps.Planner = cleaner.NewPlanner(a.deps.Protector, &fakeCleanDeps{}, a.IsScanned, nil)
+	p := mustPlan(t, a, "permanent", `C:\link`, `C:\link\inside`, `C:\plain`)
+	want := map[string]bool{`C:\link`: true, `C:\link\inside`: true}
+	got := map[string]bool{}
+	for _, r := range p.Refused {
+		if r.Reason == cleaner.ReasonLink {
+			got[r.Path] = true
+		}
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("refused = %+v", p.Refused)
+	}
+	if len(p.Items) != 1 || p.Items[0].Path != `C:\plain` {
+		t.Fatalf("items = %+v", p.Items)
+	}
 }

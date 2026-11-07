@@ -192,6 +192,7 @@ export const strings = {
     invalid_action: 'Ação inválida para este item.',
     invalid_size: 'Tamanho inválido registrado para este item.',
     changed: 'O item mudou desde a análise e foi pulado por segurança.',
+    link: 'É um link (junction ou link simbólico): não é apagado para não atingir o destino.',
     canceled: 'Cancelado antes de chegar neste item.',
     recycle_aborted: 'A operação da Lixeira foi interrompida.',
     path_too_long_for_recycle: 'O caminho é longo demais para a Lixeira.',

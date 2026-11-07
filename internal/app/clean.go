@@ -85,6 +85,18 @@ func (a *App) locate(path string) (*session, tree.NodeID, bool) {
 	return nil, tree.NoNode, false
 }
 
+// underLink reports whether id or one of its ancestors is a junction/symlink.
+// The planner canonicalizes to the link target, so such a node would plan the
+// deletion of whatever the link points to: it is always refused.
+func underLink(t *tree.Tree, id tree.NodeID) bool {
+	for ; id != tree.NoNode; id = t.Nodes[id].Parent {
+		if t.Nodes[id].Flags&tree.FlagLink != 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // PlanClean valida os caminhos e devolve um plano com token de uso único.
 // Não apaga nada.
 func (a *App) PlanClean(paths []string, mode string) (PlanDTO, error) {
@@ -98,6 +110,10 @@ func (a *App) PlanClean(paths []string, mode string) (PlanDTO, error) {
 		s, id, ok := a.locate(p)
 		if !ok {
 			refused = append(refused, RefusalDTO{Path: p, Reason: cleaner.ReasonNotScanned})
+			continue
+		}
+		if underLink(s.tree, id) {
+			refused = append(refused, RefusalDTO{Path: p, Reason: cleaner.ReasonLink})
 			continue
 		}
 		path := s.tree.Path(id)

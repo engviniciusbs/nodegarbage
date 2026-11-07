@@ -66,6 +66,9 @@ const (
 	// ReasonChanged (Recheck): the item no longer canonicalizes to the
 	// planned path, e.g. it was replaced by a junction.
 	ReasonChanged = "changed"
+	// ReasonLink (App.PlanClean): the scanned node is a junction/symlink or
+	// lies below one; deleting through it would hit the link target.
+	ReasonLink = "link"
 )
 
 // Item warnings.
