@@ -128,3 +128,25 @@ func expandNorm(s string, env Env) (string, bool) {
 	}
 	return n, true
 }
+
+// IsAbsoluteEntry reports whether s, after %VAR% expansion with env (every
+// referenced variable must be defined), is an absolute drive path (`X:\...`)
+// or a UNC path with server and share (`\server\share[\...]`). Drive-relative
+// (`C:`, `C:foo`), rooted (`\x`), relative and device (`\?\`, `\.\`) forms
+// are rejected. "/" counts as "\".
+func IsAbsoluteEntry(s string, env Env) bool {
+	e, ok := expandEnv(strings.TrimSpace(s), env)
+	if !ok {
+		return false
+	}
+	e = strings.ReplaceAll(e, "/", `\`)
+	if len(e) >= 3 && e[1] == ':' && e[2] == '\\' {
+		c := e[0] | 0x20
+		return c >= 'a' && c <= 'z'
+	}
+	if !strings.HasPrefix(e, `\`) || strings.HasPrefix(e, `\?\`) || strings.HasPrefix(e, `\.\`) {
+		return false
+	}
+	parts := strings.Split(e[2:], `\`)
+	return len(parts) >= 2 && strings.TrimSpace(parts[0]) != "" && strings.TrimSpace(parts[1]) != ""
+}

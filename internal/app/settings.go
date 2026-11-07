@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
 	"strings"
+
+	"github.com/engviniciusbs/nodegarbage/internal/rules"
 )
 
 const (
@@ -121,6 +125,18 @@ func (a *App) SaveSettings(s SettingsDTO) error {
 	extra, err := cleanList(s.ExtraProtected)
 	if err != nil {
 		return err
+	}
+	env := rules.Env(os.Getenv)
+	for _, e := range extra {
+		valid := false
+		if a.deps.Protector != nil {
+			valid = a.deps.Protector.ValidExtra(e)
+		} else {
+			valid = rules.IsAbsoluteEntry(e, env)
+		}
+		if !valid {
+			return fmt.Errorf("caminho protegido inválido: \"%s\". Use um caminho absoluto (C:\\pasta ou \\\\servidor\\compartilhamento\\pasta) e apenas variáveis definidas (ex.: %%USERPROFILE%%)", e)
+		}
 	}
 	st := storedSettings{RedactTerms: terms, ExtraProtected: extra, AIMinBytes: s.AIMinBytes, Workers: s.Workers}
 	b, err := json.Marshal(st)

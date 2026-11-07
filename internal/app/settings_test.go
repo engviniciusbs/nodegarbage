@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/engviniciusbs/nodegarbage/internal/ai"
@@ -159,5 +160,25 @@ func TestListVolumesAfterCleanRemovedNodeNotCounted(t *testing.T) {
 	a.waitClean()
 	if s, _ := a.GetSummary(`C:\`); s.SafeBytes != 0 || len(s.ByCategory) != 0 {
 		t.Fatalf("removed node still summarized: %+v", s)
+	}
+}
+
+// Extra protected entries must be absolute (X:\... or \server\share\...)
+// after %VAR% expansion, with every variable defined; otherwise SaveSettings
+// refuses them and names the entry.
+func TestSaveSettingsRejectsNonAbsoluteExtra(t *testing.T) {
+	a, _ := newTestApp(t, fakeScanner{}, nil)
+	for _, bad := range []string{`relative\path`, `C:`, `C:foo`, `\rooted`, `\server`, `%NOPE%\x`, `%USERPROFILE%`} {
+		err := a.SaveSettings(SettingsDTO{ExtraProtected: []string{`C:\ok`, bad}})
+		if err == nil || !strings.Contains(err.Error(), bad) {
+			t.Errorf("%q: err = %v", bad, err)
+		}
+	}
+	if s, _ := a.GetSettings(); len(s.ExtraProtected) != 0 {
+		t.Fatalf("rejected settings were saved: %+v", s.ExtraProtected)
+	}
+	good := []string{`C:\ok`, `d:/data/x`, `\srv\share`, `\srv\share\dir`}
+	if err := a.SaveSettings(SettingsDTO{ExtraProtected: good}); err != nil {
+		t.Fatal(err)
 	}
 }

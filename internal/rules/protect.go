@@ -214,3 +214,7 @@ func (p *Protector) SetExtra(extra []string) {
 	p.extra = out
 	p.mu.Unlock()
 }
+
+// ValidExtra reports whether an extra protected entry is usable with this
+// protector's environment (see IsAbsoluteEntry).
+func (p *Protector) ValidExtra(s string) bool { return IsAbsoluteEntry(s, p.env) }
