@@ -84,6 +84,27 @@ export async function refresh(): Promise<void> {
   if (kids) results.children = kids
 }
 
+/**
+ * Opens the parent folder of a located item and asks the list to focus it.
+ * `chain` runs from the first folder under the root down to the target.
+ */
+export async function revealPath(volume: string, chain: NodeDTO[]): Promise<void> {
+  if (chain.length === 0) return
+  const changed = results.volume !== volume
+  results.volume = volume
+  const parent = chain.slice(0, -1)
+  const target = chain[chain.length - 1]
+  const kids = await fetchChildren(parent.length ? parent[parent.length - 1].id : ROOT_ID)
+  if (!kids) return
+  if (changed) clear()
+  results.hoverId = null
+  results.categoryFilter = null
+  results.path = parent
+  results.currentId = parent.length ? parent[parent.length - 1].id : ROOT_ID
+  results.children = kids
+  results.focusRequest = target.id
+}
+
 export function toggleCategory(category: string): void {
   results.categoryFilter = results.categoryFilter === category ? null : category
 }

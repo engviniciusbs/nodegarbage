@@ -4,11 +4,14 @@
   import Home from './screens/Home.svelte'
   import Scan from './screens/Scan.svelte'
   import Results from './screens/Results.svelte'
+  import AIReport from './screens/AIReport.svelte'
   import { route } from '$lib/route.svelte'
   import { initScanEvents } from '$lib/stores/scan.svelte'
+  import { initAIEvents } from '$lib/stores/ai.svelte'
   import { strings } from '$lib/strings'
 
   initScanEvents()
+  initAIEvents()
 </script>
 
 <div class="flex h-full">
@@ -21,6 +24,8 @@
       <Scan />
     {:else if route.current === 'results'}
       <Results />
+    {:else if route.current === 'ai'}
+      <AIReport />
     {:else}
       <EmptyState title={strings.common.empty} description={strings.common.comingSoon} />
     {/if}
