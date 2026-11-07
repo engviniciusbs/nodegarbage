@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-
-const html = readFileSync(resolve(__dirname, '../../index.html'), 'utf8')
+import html from '../../index.html?raw'
 
 function csp(): Record<string, string[]> {
   const m = html.match(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i)
