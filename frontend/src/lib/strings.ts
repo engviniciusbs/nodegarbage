@@ -242,6 +242,7 @@ export const strings = {
     cancelRun: 'Cancelar limpeza',
     cancelling: 'Cancelando…',
     doneTitle: 'Limpeza concluída',
+    snapshotNotSaved: 'Não foi possível atualizar a análise salva: os itens apagados podem reaparecer até a próxima varredura.',
     freed: 'Espaço liberado',
     okCount: (n: number) => `${n} apagados`,
     skippedCount: (n: number) => `${n} pulados`,

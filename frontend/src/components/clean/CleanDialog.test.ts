@@ -207,4 +207,13 @@ describe('CleanDialog during execution', () => {
     const b = await screen.findByRole('button', { name: strings.clean.newPlan })
     await waitFor(() => expect(b).toHaveFocus())
   })
+
+  it('shows the snapshot warning after done', async () => {
+    render(CleanDialog, { open: true, onClose })
+    await waitFor(() => expect(confirmBtn()).toBeEnabled())
+    await userEvent.click(confirmBtn())
+    await waitFor(() => expect(m.ExecuteClean).toHaveBeenCalled())
+    handlers['clean:done']({ freed: 1, results: [{ path: 'a', status: 'ok', reason: '', freed: 1, skippedFiles: [] }], warning: 'snapshot_not_saved' })
+    expect(await screen.findByText(strings.clean.snapshotNotSaved)).toBeInTheDocument()
+  })
 })

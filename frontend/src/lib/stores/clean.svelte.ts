@@ -27,7 +27,7 @@ export const clean = $state({
   paths: [] as string[],
   progress: { done: 0, total: 0, current: '' },
   canceling: false,
-  summary: null as { freed: number; results: ItemResult[] } | null,
+  summary: null as { freed: number; results: ItemResult[]; warning: string } | null,
   permanentAck: false,
   /** Incremented after every finished cleaning so screens can refresh derived data. */
   doneCount: 0,
@@ -110,10 +110,10 @@ export function resetClean(): void {
   clean.plan = null
 }
 
-function finish(d: { freed: number; results: ItemResult[] }) {
+function finish(d: { freed: number; results: ItemResult[]; warning?: string }) {
   unsubscribe()
   busy = false
-  clean.summary = { freed: d?.freed ?? 0, results: d?.results ?? [] }
+  clean.summary = { freed: d?.freed ?? 0, results: d?.results ?? [], warning: d?.warning ?? '' }
   clean.phase = 'done'
   clean.doneCount++
   clearSelection()

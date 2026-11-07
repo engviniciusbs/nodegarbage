@@ -28,6 +28,9 @@
     <li>{strings.clean.skippedCount(count('skipped'))}</li>
     <li>{strings.clean.errorCount(count('error'))}</li>
   </ul>
+  {#if clean.summary?.warning === 'snapshot_not_saved'}
+    <p class="text-sm text-muted">{strings.clean.snapshotNotSaved}</p>
+  {/if}
   {#if problems.length > 0}
     <section class="flex flex-col gap-2">
       <h3 class="text-sm font-semibold text-primary">{strings.clean.problemsTitle}</h3>

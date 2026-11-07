@@ -7,6 +7,7 @@ import (
 
 	"github.com/engviniciusbs/nodegarbage/internal/cleaner"
 	"github.com/engviniciusbs/nodegarbage/internal/rules"
+	"github.com/engviniciusbs/nodegarbage/internal/scanner"
 	"github.com/engviniciusbs/nodegarbage/internal/store"
 	"github.com/engviniciusbs/nodegarbage/internal/tree"
 )
@@ -55,6 +56,10 @@ type CleanProgressDTO struct {
 type CleanDoneDTO struct {
 	Freed   int64           `json:"freed"`
 	Results []ItemResultDTO `json:"results"`
+	// Warning is a non-fatal problem: "snapshot_not_saved" when the updated
+	// tree could not be re-saved (cleaned items may reappear after a restart
+	// until the next scan; the planner still refuses them as not_found).
+	Warning string `json:"warning"`
 }
 
 type CleanupDTO struct {
@@ -208,9 +213,12 @@ func (a *App) runClean(ctx context.Context, plan cleaner.Plan) {
 		}
 	}
 	results := cleaner.Execute(ctx, plan, a.deps.Deleter, a.deps.Planner.Recheck, onItem)
-	a.applyCleanResults(plan, results)
+	changed := a.applyCleanResults(plan, results)
 
 	done := CleanDoneDTO{Results: make([]ItemResultDTO, 0, len(results))}
+	if !a.resaveSnapshots(changed) {
+		done.Warning = WarnSnapshotNotSaved
+	}
 	for _, r := range results {
 		done.Freed += r.Freed
 		done.Results = append(done.Results, resultDTO(r))
@@ -235,10 +243,14 @@ func (a *App) recordCleanup(plan cleaner.Plan, it cleaner.PlanItem, r cleaner.It
 
 // applyCleanResults removes the fully deleted items from the sessions
 // (copy-on-write, one tree clone per session) and updates ancestor totals.
-// Partially deleted items (some files were locked) stay in the tree.
-func (a *App) applyCleanResults(plan cleaner.Plan, results []cleaner.ItemResult) {
+// Partially deleted items (some files were locked) stay in the tree. It
+// returns the keys of the sessions that changed.
+func (a *App) applyCleanResults(plan cleaner.Plan, results []cleaner.ItemResult) []string {
+	var changed []string
 	for _, k := range a.sessionKeys() {
+		edited := false
 		a.updateSession(k, func(old *session) *session {
+			edited = false
 			var t *tree.Tree
 			for i, r := range results {
 				if r.Status != cleaner.StatusOK || r.SkippedCount > 0 {
@@ -264,11 +276,42 @@ func (a *App) applyCleanResults(plan cleaner.Plan, results []cleaner.ItemResult)
 			if t == nil {
 				return nil
 			}
+			edited = true
 			n := *old
 			n.tree = t
 			return &n
 		})
+		if edited {
+			changed = append(changed, k)
+		}
 	}
+	return changed
+}
+
+// resaveSnapshots writes the current tree of each given session back to the
+// store (keeping its scan time), so cleaned items do not reappear after a
+// restart. It runs synchronously, before clean:done, with a background
+// context so that a shutdown does not leave a stale snapshot half-written
+// (SaveSnapshot is one transaction). It reports false if any save failed.
+func (a *App) resaveSnapshots(keys []string) bool {
+	if a.deps.Store == nil {
+		return true
+	}
+	ok := true
+	for _, k := range keys {
+		a.mu.RLock()
+		s := a.sessions[k]
+		a.mu.RUnlock()
+		if s == nil {
+			continue
+		}
+		sn := store.Snapshot{Volume: s.root, ScannedAt: s.scannedAt, Engine: scanner.EngineWalk,
+			Duration: s.scanDur, Tree: s.tree}
+		if err := a.deps.Store.SaveSnapshot(context.Background(), sn); err != nil {
+			ok = false
+		}
+	}
+	return ok
 }
 
 // CancelClean cancela a limpeza em andamento; os itens restantes são pulados.

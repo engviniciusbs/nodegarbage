@@ -30,6 +30,7 @@ type session struct {
 	classes    *rules.Classifications
 	aiOpinions map[tree.NodeID]ai.Resolved // replaced, never mutated, once published
 	scannedAt  time.Time
+	scanDur    time.Duration // informational, kept when the snapshot is re-saved
 }
 
 func volKey(v string) string {
@@ -43,8 +44,8 @@ func (a *App) classify(t *tree.Tree) *rules.Classifications {
 	return a.deps.Classifier.Classify(t, a.deps.Now())
 }
 
-func (a *App) setSession(root string, t *tree.Tree, at time.Time) {
-	s := &session{root: root, tree: t, classes: a.classify(t), aiOpinions: map[tree.NodeID]ai.Resolved{}, scannedAt: at}
+func (a *App) setSession(root string, t *tree.Tree, at time.Time, dur time.Duration) {
+	s := &session{root: root, tree: t, classes: a.classify(t), aiOpinions: map[tree.NodeID]ai.Resolved{}, scannedAt: at, scanDur: dur}
 	a.mu.Lock()
 	a.sessions[volKey(root)] = s
 	a.mu.Unlock()
@@ -80,7 +81,7 @@ func (a *App) loadSnapshots() {
 		if err != nil || sn == nil || sn.Tree == nil {
 			continue
 		}
-		a.setSession(vol, sn.Tree, sn.ScannedAt)
+		a.setSession(vol, sn.Tree, sn.ScannedAt, sn.Duration)
 	}
 }
 
@@ -187,16 +188,17 @@ func (a *App) scanOne(ctx context.Context, root string) bool {
 
 	t := b.Finish()
 	at := a.deps.Now()
+	dur := time.Since(start)
 	if a.deps.Store != nil {
 		sn := store.Snapshot{Volume: root, ScannedAt: at, Engine: scanner.EngineWalk,
-			Duration: time.Since(start), Tree: t}
+			Duration: dur, Tree: t}
 		// A save failure is not fatal: the scan stays usable in this session,
 		// it just won't survive a restart.
 		if err := a.deps.Store.SaveSnapshot(ctx, sn); err != nil {
 			done.Warning = WarnSnapshotNotSaved
 		}
 	}
-	a.setSession(root, t, at)
+	a.setSession(root, t, at, dur)
 	done.DeniedCount = t.DeniedCount
 	if len(t.Denied) > 0 {
 		n := len(t.Denied)

@@ -372,3 +372,31 @@ func TestPlanCleanRefusesLinks(t *testing.T) {
 		t.Fatalf("items = %+v", p.Items)
 	}
 }
+
+// After a clean, the volume snapshot is re-saved from the edited tree, so the
+// removed items do not reappear after a restart.
+func TestCleanResavesSnapshot(t *testing.T) {
+	a, _, r := newCleanApp(t)
+	p := mustPlan(t, a, "permanent", `C:\proj\node_modules`)
+	if err := a.ExecuteClean(p.ID, p.Token); err != nil {
+		t.Fatal(err)
+	}
+	a.waitClean()
+	sn, err := a.deps.Store.LoadSnapshot(context.Background(), `C:\`)
+	if err != nil || sn == nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	if id, ok := sn.Tree.Find(`C:\proj\node_modules`); ok && !sn.Tree.IsRemoved(id) {
+		t.Fatal("removed node still in the saved snapshot")
+	}
+	if _, ok := sn.Tree.Find(`C:\proj\src`); !ok {
+		t.Fatal("untouched node missing from the saved snapshot")
+	}
+	if got := sn.Tree.Nodes[sn.Tree.Root].TotalSize; got != 80 {
+		t.Fatalf("root total = %d, want 80", got)
+	}
+	done := r.of(EvCleanDone)
+	if len(done) != 1 || done[0].(CleanDoneDTO).Warning != "" {
+		t.Fatalf("done = %+v", done)
+	}
+}
