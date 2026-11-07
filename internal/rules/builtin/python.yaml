@@ -19,6 +19,17 @@
   action: delete_dir
   explain: Ambiente virtual do projeto. Dá para recriar, mas só se as dependências estiverem declaradas no pyproject.toml; pacotes instalados na mão se perdem.
 
+- id: python.venv_requirements
+  name: Ambiente virtual (.venv)
+  category: build-artifact
+  match:
+    dirname: .venv
+    sibling: requirements.txt
+  verdict: caution
+  regenerable: pip install -r requirements.txt
+  action: delete_dir
+  explain: Ambiente virtual do projeto. Dá para recriar com pip install -r requirements.txt, mas só se o arquivo estiver completo; pacotes instalados na mão se perdem.
+
 - id: python.pip_cache
   name: Cache do pip
   category: pkg-cache

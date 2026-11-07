@@ -20,6 +20,28 @@
   action: delete_dir
   explain: Arquivos intermediários de compilação do .NET. São recriados no próximo restore ou build.
 
+- id: dotnet.bin_sln
+  name: bin do .NET (solução)
+  category: build-artifact
+  match:
+    dirname: bin
+    sibling: '*.sln'
+  verdict: safe
+  regenerable: dotnet build
+  action: delete_dir
+  explain: Binários compilados ao lado de uma solução .NET (.sln). O dotnet build ou o Visual Studio geram de novo quando precisar.
+
+- id: dotnet.obj_sln
+  name: obj do .NET (solução)
+  category: build-artifact
+  match:
+    dirname: obj
+    sibling: '*.sln'
+  verdict: safe
+  regenerable: dotnet restore
+  action: delete_dir
+  explain: Arquivos intermediários de compilação ao lado de uma solução .NET (.sln). São recriados no próximo restore ou build.
+
 - id: dotnet.nuget
   name: Pacotes do NuGet
   category: pkg-cache

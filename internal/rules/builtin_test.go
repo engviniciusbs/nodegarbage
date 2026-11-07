@@ -83,9 +83,12 @@ func TestBuiltinTable(t *testing.T) {
 		{"rust.registry", u + `\.cargo\registry`, nil, Safe, ActionDeleteDir, ""},
 		{"dotnet.bin", `D:\app\bin`, []string{"App.csproj", "bin"}, Safe, ActionDeleteDir, ""},
 		{"dotnet.obj", `D:\app\obj`, []string{"App.csproj", "obj"}, Safe, ActionDeleteDir, ""},
+		{"dotnet.bin_sln", `D:\sol\bin`, []string{"App.sln", "bin"}, Safe, ActionDeleteDir, ""},
+		{"dotnet.obj_sln", `D:\sol\obj`, []string{"App.sln", "obj"}, Safe, ActionDeleteDir, ""},
 		{"dotnet.nuget", u + `\.nuget\packages`, nil, Safe, ActionManual, "dotnet nuget locals all --clear"},
 		{"python.pycache", `D:\py\pkg\__pycache__`, nil, Safe, ActionDeleteDir, ""},
 		{"python.venv", `D:\py\.venv`, []string{"pyproject.toml", ".venv"}, Caution, ActionDeleteDir, ""},
+		{"python.venv_requirements", `D:\rq\.venv`, []string{"requirements.txt", ".venv"}, Caution, ActionDeleteDir, ""},
 		{"python.pip_cache", la + `\pip\Cache`, nil, Safe, ActionDeleteDir, ""},
 		{"python.uv_cache", la + `\uv\cache`, nil, Safe, ActionManual, "uv cache clean"},
 		{"jvm.gradle_caches", u + `\.gradle\caches`, nil, Safe, ActionDeleteDir, ""},
@@ -101,7 +104,8 @@ func TestBuiltinTable(t *testing.T) {
 		{"browsers.firefox_cache", la + `\Mozilla\Firefox\Profiles`, nil, Caution, ActionManual, "about:preferences#privacy → Limpar dados"},
 		{"editors.vscode_cache", u + `\AppData\Roaming\Code\Cache`, nil, Safe, ActionDeleteContents, ""},
 		{"editors.vscode_cacheddata", u + `\AppData\Roaming\Code\CachedData`, nil, Safe, ActionDeleteContents, ""},
-		{"editors.jetbrains_cache", la + `\JetBrains`, nil, Caution, ActionDeleteDir, ""},
+		{"editors.jetbrains_cache", la + `\JetBrains`, nil, Caution, ActionManual,
+			"Use 'Invalidate Caches' na IDE ou apague apenas as pastas de cache de versões antigas"},
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
