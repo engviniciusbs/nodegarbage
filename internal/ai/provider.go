@@ -69,6 +69,12 @@ func NewProvider(pr Profile, apiKey string, hc *http.Client) (Provider, error) {
 	if hc == nil {
 		hc = &http.Client{Timeout: defaultTimeout}
 	}
+	// Never follow a redirect to another origin: x-api-key (and, between
+	// ports of one host, Authorization) and the payload would go with it.
+	// The caller's client is copied, not mutated.
+	c := *hc
+	c.CheckRedirect = sameOriginRedirect
+	hc = &c
 	switch pr.Kind {
 	case KindOpenAICompat:
 		base := strings.TrimRight(pr.BaseURL, "/")
@@ -84,6 +90,22 @@ func NewProvider(pr Profile, apiKey string, hc *http.Client) (Provider, error) {
 		return &anthropicProvider{base: base, model: pr.Model, key: apiKey, hc: hc, delays: defaultDelays}, nil
 	}
 	return nil, fmt.Errorf("ai: unknown provider kind %q", pr.Kind)
+}
+
+// errCrossOriginRedirect refuses a redirect that changes scheme or host:port.
+var errCrossOriginRedirect = errors.New("ai: redirect to another origin refused")
+
+// sameOriginRedirect is the providers' http.Client.CheckRedirect: a redirect
+// is followed only within the original scheme and host:port, at most 10 times.
+func sameOriginRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("ai: too many redirects")
+	}
+	orig := via[0].URL
+	if !strings.EqualFold(req.URL.Scheme, orig.Scheme) || !strings.EqualFold(req.URL.Host, orig.Host) {
+		return errCrossOriginRedirect
+	}
+	return nil
 }
 
 // analysisSchema is the JSON schema of the expected answer, shared by both providers.

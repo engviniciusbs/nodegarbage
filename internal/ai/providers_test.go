@@ -226,3 +226,39 @@ func TestBackoffRespectsContext(t *testing.T) {
 		t.Fatalf("err=%v elapsed=%v", err, time.Since(start))
 	}
 }
+
+// A redirect to another host must never carry the API key (nor the payload):
+// it is refused, for both providers and also with a caller-supplied client.
+func TestCrossHostRedirectRefused(t *testing.T) {
+	for _, kind := range []Kind{KindAnthropic, KindOpenAICompat} {
+		for _, custom := range []bool{false, true} {
+			var hits atomic.Int32
+			other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				hits.Add(1)
+				if r.Header.Get("x-api-key") != "" || r.Header.Get("Authorization") != "" {
+					t.Errorf("%s: key forwarded to other host", kind)
+				}
+				io.WriteString(w, okBody(kind))
+			}))
+			first := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, other.URL+r.URL.Path, http.StatusTemporaryRedirect)
+			}))
+			var hc *http.Client
+			if custom {
+				hc = &http.Client{Timeout: 5 * time.Second}
+			}
+			_, err := mk(t, kind, first.URL, "sk-secret", hc).Analyze(context.Background(), Payload{})
+			if err == nil {
+				t.Errorf("%s custom=%v: redirect followed", kind, custom)
+			}
+			if hits.Load() != 0 {
+				t.Errorf("%s custom=%v: other host was contacted", kind, custom)
+			}
+			if hc != nil && hc.CheckRedirect != nil {
+				t.Errorf("caller's client was mutated")
+			}
+			first.Close()
+			other.Close()
+		}
+	}
+}
