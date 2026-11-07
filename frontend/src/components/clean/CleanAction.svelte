@@ -1,5 +1,6 @@
 <script lang="ts">
   import CleanDialog from './CleanDialog.svelte'
+  import { clean } from '$lib/stores/clean.svelte'
   import { selection } from '$lib/stores/selection.svelte'
   import { strings } from '$lib/strings'
 
@@ -16,7 +17,7 @@
 <button
   bind:this={btn}
   type="button"
-  disabled={selection.paths.size === 0}
+  disabled={selection.paths.size === 0 || clean.phase === 'executing'}
   onclick={() => (open = true)}
   class="inline-flex cursor-pointer items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:pointer-events-none disabled:opacity-50"
 >

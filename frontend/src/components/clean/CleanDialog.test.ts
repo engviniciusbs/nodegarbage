@@ -18,6 +18,7 @@ import * as api from '$lib/api'
 import { refresh } from '$lib/stores/results.svelte'
 import CleanDialog from './CleanDialog.svelte'
 import { selection, toggle, clear } from '$lib/stores/selection.svelte'
+import { startClean, clean } from '$lib/stores/clean.svelte'
 import { strings } from '$lib/strings'
 import { node } from '../../test/fixtures'
 
@@ -42,6 +43,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   for (const k of Object.keys(handlers)) delete handlers[k]
   clear()
+  clean.phase = 'planning'
   toggle(node({ id: 1 }))
   m.PlanClean.mockResolvedValue(plan() as never)
   m.ExecuteClean.mockResolvedValue(undefined as never)
@@ -168,5 +170,41 @@ describe('CleanDialog', () => {
     render(CleanDialog, { open: true, onClose })
     expect(await screen.findByText(strings.clean.more(30))).toBeInTheDocument()
     expect(confirmBtn()).toHaveTextContent('260')
+  })
+})
+
+describe('CleanDialog during execution', () => {
+  it('re-opens after a native close, keeps onClose uncalled, and focuses Cancelar limpeza', async () => {
+    render(CleanDialog, { open: true, onClose })
+    await waitFor(() => expect(confirmBtn()).toBeEnabled())
+    await userEvent.click(confirmBtn())
+    await waitFor(() => expect(m.ExecuteClean).toHaveBeenCalled())
+    const cancel = await screen.findByRole('button', { name: strings.clean.cancelRun })
+    await waitFor(() => expect(cancel).toHaveFocus())
+    const dlg = screen.getByRole('dialog') as HTMLDialogElement
+    dlg.close()
+    expect(dlg.open).toBe(true)
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('progressbar', { name: strings.clean.progressLabel })).toBeInTheDocument()
+  })
+
+  it('startClean during executing is a no-op', async () => {
+    render(CleanDialog, { open: true, onClose })
+    await waitFor(() => expect(confirmBtn()).toBeEnabled())
+    await userEvent.click(confirmBtn())
+    await waitFor(() => expect(m.ExecuteClean).toHaveBeenCalled())
+    const calls = m.PlanClean.mock.calls.length
+    await startClean(['C:\other'])
+    expect(m.PlanClean.mock.calls.length).toBe(calls)
+    expect(Object.keys(handlers)).toContain('clean:done')
+  })
+
+  it('focuses Gerar novo plano when an error returns to review', async () => {
+    m.ExecuteClean.mockRejectedValue('token expired')
+    render(CleanDialog, { open: true, onClose })
+    await waitFor(() => expect(confirmBtn()).toBeEnabled())
+    await userEvent.click(confirmBtn())
+    const b = await screen.findByRole('button', { name: strings.clean.newPlan })
+    await waitFor(() => expect(b).toHaveFocus())
   })
 })

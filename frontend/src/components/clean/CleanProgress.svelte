@@ -3,9 +3,12 @@
   import ProgressBar from '../ui/ProgressBar.svelte'
   import { clean, cancelRun } from '$lib/stores/clean.svelte'
   import { strings } from '$lib/strings'
+
+  let root = $state<HTMLElement>()
+  $effect(() => root?.querySelector('button')?.focus())
 </script>
 
-<div class="flex flex-col gap-3" aria-live="polite">
+<div bind:this={root} class="flex flex-col gap-3" aria-live="polite">
   <p class="text-sm font-medium text-primary">{strings.clean.running}</p>
   <ProgressBar value={clean.progress.done} max={clean.progress.total} label={strings.clean.progressLabel} />
   <p class="text-xs tabular-nums text-muted">{strings.clean.progress(clean.progress.done, clean.progress.total)}</p>

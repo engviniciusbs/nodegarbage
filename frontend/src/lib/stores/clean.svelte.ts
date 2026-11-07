@@ -78,6 +78,8 @@ async function plan(): Promise<void> {
 
 /** Opens a fresh session for `paths` (a snapshot of the selection) in recycle mode. */
 export function startClean(paths: string[]): Promise<void> {
+  // Never drop the listeners of a running cleaning.
+  if (clean.phase === 'executing') return Promise.resolve()
   unsubscribe()
   busy = false
   clean.mode = 'recycle'

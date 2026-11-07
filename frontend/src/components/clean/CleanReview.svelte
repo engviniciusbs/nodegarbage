@@ -16,6 +16,10 @@
     clean.mode === 'recycle' &&
       (clean.plan?.refused ?? []).some((r) => r.reason === 'exceeds_recycle_bin' || r.reason === 'no_recycle_bin'),
   )
+  let alertEl = $state<HTMLElement>()
+  $effect(() => {
+    if (clean.error) alertEl?.querySelector('button')?.focus()
+  })
   const total = $derived(clean.plan?.totalBytes ?? 0)
 </script>
 
@@ -37,7 +41,7 @@
   <Skeleton lines={4} label={strings.clean.planning} />
 {:else}
   {#if clean.error}
-    <div role="alert" class="flex flex-col items-start gap-2 text-sm text-primary">
+    <div bind:this={alertEl} role="alert" class="flex flex-col items-start gap-2 text-sm text-primary">
       <p>{clean.error}</p>
       <Button variant="primary" onclick={replan}>{strings.clean.newPlan}</Button>
     </div>

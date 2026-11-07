@@ -35,3 +35,14 @@ describe('CleanAction', () => {
     await waitFor(() => expect(btn).toHaveFocus())
   })
 })
+
+describe('CleanAction while cleaning', () => {
+  it('is disabled while a cleaning is executing', async () => {
+    const { clean } = await import('$lib/stores/clean.svelte')
+    toggle(node({ id: 1 }))
+    clean.phase = 'executing'
+    render(CleanAction)
+    expect(screen.getByRole('button', { name: strings.clean.button(1) })).toBeDisabled()
+    clean.phase = 'planning'
+  })
+})

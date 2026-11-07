@@ -32,6 +32,11 @@
   }
 
   function onNativeClose() {
+    // Chromium can close the dialog natively on a repeated Esc (cancel not cancelable): never during a cleaning.
+    if (clean.phase === 'executing') {
+      if (dlg && !dlg.open) dlg.showModal()
+      return
+    }
     resetClean()
     origin?.focus()
     if (open) onClose()
