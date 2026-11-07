@@ -1,30 +1,14 @@
 <script lang="ts">
-  import logo from './assets/images/logo-universal.png'
+  import Sidebar from './components/layout/Sidebar.svelte'
+  import EmptyState from './components/ui/EmptyState.svelte'
+  import { route } from '$lib/route.svelte'
+  import { strings } from '$lib/strings'
 </script>
 
-<main>
-  <img alt="Wails logo" id="logo" src="{logo}">
-  <div class="result" id="result">NodeGarbage</div>
-</main>
-
-<style>
-
-  #logo {
-    display: block;
-    width: 50%;
-    height: 50%;
-    margin: auto;
-    padding: 10% 0 0;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    background-origin: content-box;
-  }
-
-  .result {
-    height: 20px;
-    line-height: 20px;
-    margin: 1.5rem auto;
-  }
-
-</style>
+<div class="flex h-full">
+  <Sidebar />
+  <main class="min-w-0 flex-1 overflow-auto p-6">
+    <h1 class="mb-4 text-xl font-semibold text-primary">{strings.nav[route.current]}</h1>
+    <EmptyState title={strings.common.empty} description={strings.common.comingSoon} />
+  </main>
+</div>

@@ -20,7 +20,9 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	xwindows "golang.org/x/sys/windows"
 )
 
 //go:embed all:frontend/dist
@@ -55,6 +57,11 @@ func listNames(dir string) []string {
 		names = append(names, e.Name())
 	}
 	return names
+}
+
+// isWindows10 reports whether the OS predates Windows 11 (build < 22000).
+func isWindows10() bool {
+	return xwindows.RtlGetVersion().BuildNumber < 22000
 }
 
 func main() {
@@ -116,6 +123,13 @@ func main() {
 		},
 	})
 
+	// Mica needs Windows 11 (build >= 22000). On Windows 10 fall back to a solid
+	// #F0F0F0 window (no backdrop, opaque background).
+	backdrop, bgAlpha := windows.Mica, uint8(0)
+	if isWindows10() {
+		backdrop, bgAlpha = windows.None, 255
+	}
+
 	err = wails.Run(&options.App{
 		Title:     "NodeGarbage",
 		Width:     1024,
@@ -125,7 +139,12 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		BackgroundColour: &options.RGBA{R: 240, G: 240, B: 240, A: bgAlpha},
+		Windows: &windows.Options{
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
+			BackdropType:         backdrop,
+		},
 		OnStartup: func(ctx context.Context) {
 			em.ctx.Store(&ctx)
 			a.Startup(ctx)
