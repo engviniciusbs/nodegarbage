@@ -53,6 +53,24 @@ export type SettingsDTO = app.SettingsDTO
 export type SummaryDTO = app.SummaryDTO
 export type VolumeDTO = app.VolumeDTO
 
+/** Event payloads are not part of any binding signature, so Wails does not generate them. */
+export interface ProgressDTO {
+  volume: string
+  files: number
+  dirs: number
+  bytes: number
+  denied: number
+  current: string
+  bytesPerSec: number
+}
+export interface ScanDoneDTO {
+  volume: string
+  durationMs: number
+  error: string
+  deniedCount: number
+  deniedSample: string[]
+}
+
 /** Subscribe to a backend event; returns the unsubscribe function. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function on(event: string, cb: (data: any) => void): () => void {
