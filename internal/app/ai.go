@@ -313,7 +313,9 @@ func (a *App) buildAI() (aiBuild, error) {
 		}
 	}
 	scans := make([]ai.ScanData, 0, len(sessions))
+	trees := make([]*tree.Tree, 0, len(sessions))
 	for _, s := range sessions {
+		trees = append(trees, s.tree)
 		v, ok := vols[volKey(s.root)]
 		if !ok {
 			v = volumes.Volume{Root: s.root}
@@ -321,13 +323,26 @@ func (a *App) buildAI() (aiBuild, error) {
 		scans = append(scans, ai.ScanData{Volume: v, Tree: s.tree, Classes: s.classes})
 	}
 	st := a.loadSettings()
-	anon := ai.NewAnonymizer(os.Getenv("USERNAME"), st.RedactTerms)
+	// Every user name we can know of: USERNAME, the USERPROFILE leaf (may
+	// differ, e.g. "jdoe.CORP") and each profile folder under X:\Users.
+	names := append([]string{os.Getenv("USERNAME"), pathLeaf(os.Getenv("USERPROFILE"))},
+		ai.UserNamesFromTrees(trees...)...)
+	anon := ai.NewUserAnonymizer(names, st.RedactTerms)
 	payload, pm := ai.BuildPayload(scans, anon, ai.PayloadOptions{MinUnknownBytes: st.AIMinBytes})
 	b, err := payload.Compact()
 	if err != nil {
 		return aiBuild{}, err
 	}
 	return aiBuild{payload: payload, json: b, pm: pm}, nil
+}
+
+// pathLeaf is the last component of a Windows path ("" for "").
+func pathLeaf(p string) string {
+	p = strings.TrimRight(strings.ReplaceAll(p, "/", `\`), `\`)
+	if i := strings.LastIndex(p, `\`); i >= 0 {
+		return p[i+1:]
+	}
+	return p
 }
 
 func (a *App) cachedAnalysis(key string) (ai.Analysis, bool) {

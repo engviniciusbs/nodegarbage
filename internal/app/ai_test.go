@@ -11,6 +11,8 @@ import (
 	"github.com/engviniciusbs/nodegarbage/internal/ai"
 	"github.com/engviniciusbs/nodegarbage/internal/cleaner"
 	"github.com/engviniciusbs/nodegarbage/internal/rules"
+	"github.com/engviniciusbs/nodegarbage/internal/scanner"
+	"github.com/engviniciusbs/nodegarbage/internal/tree"
 )
 
 // fakeProvider records the payloads it receives and marks every unknown item
@@ -270,5 +272,46 @@ func TestRunAIWithoutScansFails(t *testing.T) {
 	p, _ := a.SaveAIProfile(AIProfileDTO{Name: "x", Kind: "anthropic", Model: "m"}, "")
 	if err := a.RunAI(p.ID, false); err == nil {
 		t.Fatal("expected error with no scanned volume")
+	}
+}
+
+// usersScanner has two profiles with large unknown folders.
+type usersScanner struct{}
+
+func (usersScanner) Scan(_ context.Context, root string, b *tree.Builder, _ *scanner.Progress) error {
+	r := b.AddDir(tree.NoNode, root, 0)
+	u := b.AddDir(r, "Users", 0)
+	for _, n := range []string{"jdoe.CORP", "maria", "Public"} {
+		p := b.AddDir(u, n, 0)
+		big := b.AddDir(p, "big-"+n, 0)
+		b.SetOwnStats(big, 600<<20, 1, 100)
+	}
+	bk := b.AddDir(r, "backup-maria", 0)
+	b.SetOwnStats(bk, 600<<20, 1, 100)
+	return nil
+}
+
+// The payload anonymizes USERNAME, the USERPROFILE leaf and every profile
+// folder under X:\Users, but keeps the shared ones.
+func TestBuildAIAnonymizesAllProfiles(t *testing.T) {
+	t.Setenv("USERNAME", "jdoe")
+	t.Setenv("USERPROFILE", `C:\Users\jdoe.CORP`)
+	a, _ := newTestApp(t, usersScanner{}, nil)
+	if err := a.StartScan([]string{`C:\`}); err != nil {
+		t.Fatal(err)
+	}
+	a.waitScan()
+	b, err := a.buildAI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := strings.ToLower(string(b.json))
+	for _, leak := range []string{"jdoe", "corp", "maria"} {
+		if strings.Contains(out, leak) {
+			t.Errorf("payload leaks %q: %s", leak, b.json)
+		}
+	}
+	if !strings.Contains(out, `public`) {
+		t.Errorf("shared folder should stay: %s", b.json)
 	}
 }
