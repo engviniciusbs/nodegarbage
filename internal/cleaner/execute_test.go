@@ -42,6 +42,24 @@ func (f *fakeDeleter) RemoveContents(path string) (int64, []string, error) {
 	return f.freed, f.skipped, err
 }
 
+// okRecheck accepts every item.
+func okRecheck(PlanItem) string { return "" }
+
+func TestExecuteNoRecheck(t *testing.T) {
+	f := &fakeDeleter{}
+	items := []PlanItem{item(`D:\a`, 1, rules.ActionDeleteDir), item(`D:\b`, 1, rules.ActionDeleteContents)}
+	calls := 0
+	res := Execute(context.Background(), Plan{Mode: ModePermanent, Items: items}, f, nil, func(int, ItemResult) { calls++ })
+	if len(f.calls) != 0 || calls != 2 {
+		t.Fatalf("deleter calls %v, onItem calls %d", f.calls, calls)
+	}
+	for _, r := range res {
+		if r.Status != StatusSkipped || r.Reason != ReasonNoRecheck {
+			t.Fatalf("result = %+v", r)
+		}
+	}
+}
+
 func item(path string, size int64, action rules.Action) PlanItem {
 	return PlanItem{Path: path, Size: size, Class: rules.Classification{Verdict: rules.Safe, Action: action}}
 }
@@ -50,7 +68,7 @@ func TestExecuteModes(t *testing.T) {
 	ctx := context.Background()
 
 	f := &fakeDeleter{}
-	res := Execute(ctx, Plan{Mode: ModeRecycle, Items: []PlanItem{item(`D:\a\node_modules`, 10, rules.ActionDeleteDir)}}, f, nil, nil)
+	res := Execute(ctx, Plan{Mode: ModeRecycle, Items: []PlanItem{item(`D:\a\node_modules`, 10, rules.ActionDeleteDir)}}, f, okRecheck, nil)
 	if len(f.calls) != 1 || f.calls[0] != `recycle:D:\a\node_modules` {
 		t.Fatalf("recycle+delete_dir calls = %v", f.calls)
 	}
@@ -59,7 +77,7 @@ func TestExecuteModes(t *testing.T) {
 	}
 
 	f = &fakeDeleter{freed: 7}
-	res = Execute(ctx, Plan{Mode: ModePermanent, Items: []PlanItem{item(`D:\cache`, 10, rules.ActionDeleteContents)}}, f, nil, nil)
+	res = Execute(ctx, Plan{Mode: ModePermanent, Items: []PlanItem{item(`D:\cache`, 10, rules.ActionDeleteContents)}}, f, okRecheck, nil)
 	if len(f.calls) != 1 || f.calls[0] != `contents:D:\cache` {
 		t.Fatalf("permanent+delete_contents calls = %v", f.calls)
 	}
@@ -68,7 +86,7 @@ func TestExecuteModes(t *testing.T) {
 	}
 
 	f = &fakeDeleter{freed: 3}
-	res = Execute(ctx, Plan{Mode: ModePermanent, Items: []PlanItem{item(`D:\nm`, 10, rules.ActionDeleteDir)}}, f, nil, nil)
+	res = Execute(ctx, Plan{Mode: ModePermanent, Items: []PlanItem{item(`D:\nm`, 10, rules.ActionDeleteDir)}}, f, okRecheck, nil)
 	if len(f.calls) != 1 || f.calls[0] != `removeall:D:\nm` || res[0].Freed != 3 {
 		t.Fatalf("permanent+delete_dir calls = %v res %+v", f.calls, res[0])
 	}
@@ -83,7 +101,7 @@ func TestExecuteModes(t *testing.T) {
 		t.Fatal(err)
 	}
 	f = &fakeDeleter{}
-	res = Execute(ctx, Plan{Mode: ModeRecycle, Items: []PlanItem{item(dir, 10, rules.ActionDeleteContents)}}, f, nil, nil)
+	res = Execute(ctx, Plan{Mode: ModeRecycle, Items: []PlanItem{item(dir, 10, rules.ActionDeleteContents)}}, f, okRecheck, nil)
 	got := append([]string(nil), f.calls...)
 	sort.Strings(got)
 	want := []string{"recycle:" + filepath.Join(dir, "a.txt"), "recycle:" + filepath.Join(dir, "b")}
@@ -96,7 +114,7 @@ func TestExecuteModes(t *testing.T) {
 
 	// Empty directory: nothing to recycle is fine.
 	f = &fakeDeleter{}
-	res = Execute(ctx, Plan{Mode: ModeRecycle, Items: []PlanItem{item(t.TempDir(), 0, rules.ActionDeleteContents)}}, f, nil, nil)
+	res = Execute(ctx, Plan{Mode: ModeRecycle, Items: []PlanItem{item(t.TempDir(), 0, rules.ActionDeleteContents)}}, f, okRecheck, nil)
 	if res[0].Status != StatusOK || len(f.calls) != 0 {
 		t.Fatalf("empty contents = %+v calls %v", res[0], f.calls)
 	}
@@ -111,19 +129,19 @@ func TestExecuteRecycleContentsPartial(t *testing.T) {
 		}
 	}
 	f := &fakeDeleter{errs: map[string]error{"recycle:" + b: errors.New("in use")}}
-	res := Execute(context.Background(), Plan{Mode: ModeRecycle, Items: []PlanItem{item(dir, 5, rules.ActionDeleteContents)}}, f, nil, nil)
+	res := Execute(context.Background(), Plan{Mode: ModeRecycle, Items: []PlanItem{item(dir, 5, rules.ActionDeleteContents)}}, f, okRecheck, nil)
 	if r := res[0]; r.Status != StatusOK || r.Reason != ReasonPartial || len(r.SkippedFiles) != 1 || r.SkippedFiles[0] != b {
 		t.Fatalf("partial = %+v", r)
 	}
 	// Every child failing is an error.
 	f = &fakeDeleter{errs: map[string]error{"recycle:" + a: errors.New("x"), "recycle:" + b: errors.New("y")}}
-	res = Execute(context.Background(), Plan{Mode: ModeRecycle, Items: []PlanItem{item(dir, 5, rules.ActionDeleteContents)}}, f, nil, nil)
+	res = Execute(context.Background(), Plan{Mode: ModeRecycle, Items: []PlanItem{item(dir, 5, rules.ActionDeleteContents)}}, f, okRecheck, nil)
 	if r := res[0]; r.Status != StatusError || r.Freed != 0 {
 		t.Fatalf("all failed = %+v", r)
 	}
 	// Aborted (user cancelled the permanent-deletion warning): stop there.
 	f = &fakeDeleter{errs: map[string]error{"recycle:" + a: ErrRecycleAborted}}
-	res = Execute(context.Background(), Plan{Mode: ModeRecycle, Items: []PlanItem{item(dir, 5, rules.ActionDeleteContents)}}, f, nil, nil)
+	res = Execute(context.Background(), Plan{Mode: ModeRecycle, Items: []PlanItem{item(dir, 5, rules.ActionDeleteContents)}}, f, okRecheck, nil)
 	if r := res[0]; r.Status != StatusSkipped || r.Reason != ReasonRecycleAborted || len(f.calls) != 1 {
 		t.Fatalf("aborted = %+v calls %v", r, f.calls)
 	}
@@ -138,7 +156,7 @@ func TestExecuteCancelBetweenItems(t *testing.T) {
 	}
 	f := &fakeDeleter{}
 	var seen []int
-	res := Execute(ctx, Plan{Mode: ModePermanent, Items: items}, f, nil, func(i int, r ItemResult) {
+	res := Execute(ctx, Plan{Mode: ModePermanent, Items: items}, f, okRecheck, func(i int, r ItemResult) {
 		seen = append(seen, i)
 		if i == 0 {
 			cancel()
@@ -166,7 +184,7 @@ func TestExecuteManyItems(t *testing.T) {
 		items = append(items, item(fmt.Sprintf(`D:\x\%d`, i), 1, rules.ActionDeleteDir))
 	}
 	next := 0
-	res := Execute(context.Background(), Plan{Mode: ModeRecycle, Items: items}, &fakeDeleter{}, nil, func(i int, r ItemResult) {
+	res := Execute(context.Background(), Plan{Mode: ModeRecycle, Items: items}, &fakeDeleter{}, okRecheck, func(i int, r ItemResult) {
 		if i != next {
 			t.Fatalf("onItem(%d), want %d", i, next)
 		}
@@ -185,7 +203,7 @@ func TestExecuteManyItems(t *testing.T) {
 func TestErrorDoesNotAbort(t *testing.T) {
 	items := []PlanItem{item(`D:\a`, 1, rules.ActionDeleteDir), item(`D:\b`, 1, rules.ActionDeleteDir), item(`D:\c`, 1, rules.ActionDeleteDir)}
 	f := &fakeDeleter{errs: map[string]error{`removeall:D:\b`: errors.New("boom")}}
-	res := Execute(context.Background(), Plan{Mode: ModePermanent, Items: items}, f, nil, nil)
+	res := Execute(context.Background(), Plan{Mode: ModePermanent, Items: items}, f, okRecheck, nil)
 	if res[1].Status != StatusError || res[1].Reason != ReasonFailed || res[1].Detail == "" {
 		t.Fatalf("item 1 = %+v", res[1])
 	}
@@ -213,7 +231,7 @@ func TestExecuteErrorMapping(t *testing.T) {
 			op = "removeall"
 		}
 		f := &fakeDeleter{errs: map[string]error{op + `:D:\a`: c.err}}
-		r := Execute(context.Background(), Plan{Mode: c.mode, Items: []PlanItem{item(`D:\a`, 9, rules.ActionDeleteDir)}}, f, nil, nil)[0]
+		r := Execute(context.Background(), Plan{Mode: c.mode, Items: []PlanItem{item(`D:\a`, 9, rules.ActionDeleteDir)}}, f, okRecheck, nil)[0]
 		if r.Status != c.status || r.Reason != c.reason || r.Freed != 0 {
 			t.Errorf("%v: %+v", c.err, r)
 		}
@@ -226,7 +244,7 @@ func TestExecuteSkippedFiles(t *testing.T) {
 		skipped = append(skipped, fmt.Sprintf(`D:\a\f%d`, i))
 	}
 	f := &fakeDeleter{freed: 4, skipped: skipped}
-	r := Execute(context.Background(), Plan{Mode: ModePermanent, Items: []PlanItem{item(`D:\a`, 9, rules.ActionDeleteDir)}}, f, nil, nil)[0]
+	r := Execute(context.Background(), Plan{Mode: ModePermanent, Items: []PlanItem{item(`D:\a`, 9, rules.ActionDeleteDir)}}, f, okRecheck, nil)[0]
 	if r.Status != StatusOK || r.Reason != ReasonPartial || r.Freed != 4 {
 		t.Fatalf("result = %+v", r)
 	}
@@ -259,11 +277,11 @@ func TestExecuteRecheck(t *testing.T) {
 
 func TestExecuteInvalidActionOrMode(t *testing.T) {
 	f := &fakeDeleter{}
-	r := Execute(context.Background(), Plan{Mode: ModePermanent, Items: []PlanItem{item(`D:\a`, 1, rules.ActionManual)}}, f, nil, nil)[0]
+	r := Execute(context.Background(), Plan{Mode: ModePermanent, Items: []PlanItem{item(`D:\a`, 1, rules.ActionManual)}}, f, okRecheck, nil)[0]
 	if r.Status != StatusError || r.Reason != ReasonInvalidAction || len(f.calls) != 0 {
 		t.Fatalf("result %+v calls %v", r, f.calls)
 	}
-	r = Execute(context.Background(), Plan{Mode: "x", Items: []PlanItem{item(`D:\a`, 1, rules.ActionDeleteDir)}}, f, nil, nil)[0]
+	r = Execute(context.Background(), Plan{Mode: "x", Items: []PlanItem{item(`D:\a`, 1, rules.ActionDeleteDir)}}, f, okRecheck, nil)[0]
 	if r.Status != StatusError || r.Reason != ReasonInvalidMode || len(f.calls) != 0 {
 		t.Fatalf("bad mode result %+v calls %v", r, f.calls)
 	}

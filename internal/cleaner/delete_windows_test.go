@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 
@@ -281,4 +282,153 @@ func TestExecuteRealPermanent(t *testing.T) {
 	if res[0].Status != StatusOK || res[0].Freed != 9 || exists(itemPath) {
 		t.Fatalf("result = %+v", res[0])
 	}
+}
+
+// A directory swapped for a junction to the victim after it was listed and
+// while its children are processed: the walk keeps working on the handle it
+// opened, so the victim's same-named file survives.
+func TestRemoveAllSwapDuringWalk(t *testing.T) {
+	root := t.TempDir()
+	victim := filepath.Join(root, "victim")
+	keep := filepath.Join(victim, "keep.txt")
+	writeFile(t, keep, 5)
+	item := filepath.Join(root, "item")
+	sub := filepath.Join(item, "sub")
+	writeFile(t, filepath.Join(sub, "keep.txt"), 7)
+	writeFile(t, filepath.Join(sub, "deeper", "keep.txt"), 1)
+
+	swapped := false
+	afterListHook = func(dir string) {
+		if swapped || !strings.EqualFold(filepath.Base(dir), "sub") {
+			return
+		}
+		swapped = true
+		if err := os.Rename(sub, filepath.Join(item, "moved")); err != nil {
+			t.Errorf("rename during walk: %v", err)
+			return
+		}
+		mkJunction(t, sub, victim)
+	}
+	t.Cleanup(func() { afterListHook = nil })
+
+	freed, _, err := OSDeleter().RemoveAll(item)
+	if !swapped {
+		t.Fatal("hook did not run")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists(keep) {
+		t.Fatal("victim file deleted through a junction swapped in during the walk")
+	}
+	if freed != 8 {
+		t.Fatalf("freed = %d, want 8 (the moved directory's files)", freed)
+	}
+	if exists(filepath.Join(item, "moved")) {
+		t.Fatal("moved directory (the one actually walked) not removed")
+	}
+}
+
+// Same swap with RemoveContents.
+func TestRemoveContentsSwapDuringWalk(t *testing.T) {
+	root := t.TempDir()
+	victim := filepath.Join(root, "victim")
+	keep := filepath.Join(victim, "keep.txt")
+	writeFile(t, keep, 5)
+	item := filepath.Join(root, "item")
+	sub := filepath.Join(item, "sub")
+	writeFile(t, filepath.Join(sub, "keep.txt"), 7)
+
+	afterListHook = func(dir string) {
+		if !strings.EqualFold(filepath.Base(dir), "sub") || exists(filepath.Join(item, "moved")) {
+			return
+		}
+		if err := os.Rename(sub, filepath.Join(item, "moved")); err != nil {
+			t.Errorf("rename during walk: %v", err)
+			return
+		}
+		mkJunction(t, sub, victim)
+	}
+	t.Cleanup(func() { afterListHook = nil })
+	if _, _, err := OSDeleter().RemoveContents(item); err != nil {
+		t.Fatal(err)
+	}
+	if !exists(keep) {
+		t.Fatal("victim file deleted")
+	}
+}
+
+func isReadOnly(t *testing.T, path string) bool {
+	t.Helper()
+	p, _ := windows.UTF16PtrFromString(path)
+	a, err := windows.GetFileAttributes(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return a&windows.FILE_ATTRIBUTE_READONLY != 0
+}
+
+// Read-only handling never changes a link target's attributes.
+func TestReadOnlyNeverTouchesLinkTarget(t *testing.T) {
+	root := t.TempDir()
+	victim := filepath.Join(root, "victim")
+	ro := filepath.Join(victim, "ro.txt")
+	writeFile(t, ro, 4)
+	if err := os.Chmod(ro, 0o444); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(ro, 0o644) })
+	item := filepath.Join(root, "item")
+	writeFile(t, filepath.Join(item, "own.txt"), 2)
+	mkJunction(t, filepath.Join(item, "dirlink"), victim)
+	fileLink := filepath.Join(item, "filelink.txt")
+	haveFileLink := os.Symlink(ro, fileLink) == nil // needs Developer Mode or admin
+	if !haveFileLink {
+		t.Log("file symlink not created (no privilege); junction case only")
+	}
+
+	freed, skipped, err := OSDeleter().RemoveAll(item)
+	if err != nil || len(skipped) != 0 || freed != 2 {
+		t.Fatalf("freed %d skipped %v err %v", freed, skipped, err)
+	}
+	if !exists(ro) || !isReadOnly(t, ro) {
+		t.Fatal("link target deleted or its read-only attribute changed")
+	}
+	if exists(item) {
+		t.Fatal("item still exists")
+	}
+}
+
+func TestRemoveAllReadOnlyDir(t *testing.T) {
+	x := filepath.Join(t.TempDir(), "x")
+	writeFile(t, filepath.Join(x, "d", "f.txt"), 3)
+	d := filepath.Join(x, "d")
+	p, _ := windows.UTF16PtrFromString(d)
+	if err := windows.SetFileAttributes(p, windows.FILE_ATTRIBUTE_READONLY); err != nil {
+		t.Fatal(err)
+	}
+	freed, skipped, err := OSDeleter().RemoveAll(x)
+	if err != nil || len(skipped) != 0 || freed != 3 || exists(x) {
+		t.Fatalf("freed %d skipped %v err %v exists %v", freed, skipped, err, exists(x))
+	}
+}
+
+func TestDirInfoLayout(t *testing.T) {
+	var e fileIDBothDirInfo
+	if unsafe.Offsetof(e.FileID) != 96 || unsafe.Offsetof(e.FileName) != 104 {
+		t.Fatalf("FILE_ID_BOTH_DIR_INFO layout: FileId %d FileName %d", unsafe.Offsetof(e.FileID), unsafe.Offsetof(e.FileName))
+	}
+}
+
+// The FileDispositionInfo fallback (no IGNORE_READONLY support) clears
+// read-only through the entry's own handle, never through a link.
+func TestRemoveAllDispositionFallback(t *testing.T) {
+	forceDispositionFallback = true
+	t.Cleanup(func() { forceDispositionFallback = false })
+	t.Run("readonly", TestRemoveAllReadOnly)
+	t.Run("readonly dir", TestRemoveAllReadOnlyDir)
+	t.Run("link target", TestReadOnlyNeverTouchesLinkTarget)
+	t.Run("junction", TestRemoveAllDoesNotFollowJunction)
+	t.Run("locked", TestRemoveAllSkipsLocked)
+	t.Run("swap", TestRemoveAllSwapDuringWalk)
 }

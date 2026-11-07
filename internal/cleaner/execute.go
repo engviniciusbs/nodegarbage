@@ -29,6 +29,7 @@ const (
 	ReasonLocked                = "locked"                    // skipped: every file was in use or denied, nothing removed
 	ReasonFailed                = "failed"                    // error: see Detail
 	ReasonInvalidMode           = "invalid_mode"              // error: plan has an unknown Mode
+	ReasonNoRecheck             = "no_recheck"                // skipped: Execute was given no recheck function
 )
 
 // MaxSkippedFiles caps ItemResult.SkippedFiles; SkippedCount keeps the total.
@@ -76,8 +77,9 @@ type Deleter interface {
 // Execute deletes the items of a redeemed plan, in order, honouring
 // plan.Mode and each item's Class.Action. Before each item it checks ctx
 // (once cancelled, this and the remaining items are skipped as canceled) and
-// calls recheck (nil disables it; tests only); a non-empty reason skips the
-// item without touching it. A failing item never stops the others. onItem
+// calls recheck; a non-empty reason skips the item without touching it.
+// recheck is mandatory: when it is nil every item is skipped as no_recheck
+// and the deleter is never called. A failing item never stops the others. onItem
 // (may be nil) is called for every item, in order, right after its outcome
 // is known. Execute must only ever be given a plan returned by
 // Planner.Redeem.
@@ -85,7 +87,9 @@ func Execute(ctx context.Context, plan Plan, d Deleter, recheck func(PlanItem) s
 	results := make([]ItemResult, len(plan.Items))
 	for i, it := range plan.Items {
 		r := ItemResult{Path: it.Path, Status: StatusSkipped, Reason: ReasonCanceled}
-		if ctx.Err() == nil {
+		if recheck == nil {
+			r.Reason = ReasonNoRecheck
+		} else if ctx.Err() == nil {
 			r = executeItem(plan.Mode, it, d, recheck)
 		}
 		results[i] = r
@@ -110,11 +114,9 @@ func executeItem(mode Mode, it PlanItem, d Deleter, recheck func(PlanItem) strin
 		r.Status, r.Reason = StatusError, ReasonInvalidAction
 		return r
 	}
-	if recheck != nil {
-		if reason := recheck(it); reason != "" {
-			r.Status, r.Reason = StatusSkipped, reason
-			return r
-		}
+	if reason := recheck(it); reason != "" {
+		r.Status, r.Reason = StatusSkipped, reason
+		return r
 	}
 
 	if mode == ModeRecycle {
