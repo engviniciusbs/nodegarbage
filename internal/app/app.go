@@ -19,6 +19,19 @@ type App struct {
 	scanning   bool
 	scanCancel context.CancelFunc
 	scanWG     sync.WaitGroup
+
+	profMu sync.Mutex // serializes read-modify-write of the AI profile list
+
+	aiMu       sync.Mutex
+	aiRunning  bool
+	aiCancel   context.CancelFunc
+	aiWG       sync.WaitGroup
+	lastReport *AIReportDTO
+
+	cleanMu     sync.Mutex
+	cleaning    bool
+	cleanCancel context.CancelFunc
+	cleanWG     sync.WaitGroup
 }
 
 // New cria um App com as dependências informadas.
@@ -33,6 +46,7 @@ func New(d Deps) *App {
 // carrega os snapshots salvos, reclassificando-os.
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
+	a.applyExtraProtected()
 	a.loadSnapshots()
 }
 

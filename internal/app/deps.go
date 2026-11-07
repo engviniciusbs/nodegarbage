@@ -26,12 +26,14 @@ type Emitter interface {
 type Deps struct {
 	Store      *store.Store
 	Volumes    func() ([]volumes.Volume, error)
-	NewScanner func(volumeRoot string) scanner.Scanner
+	NewScanner func(volumeRoot string, workers int) scanner.Scanner
 
 	Rules        []rules.Rule
 	RuleProblems []rules.LoadProblem
 	Protector    *rules.Protector
 	Classifier   *rules.Classifier
+
+	UserRulesDir string
 
 	Planner *cleaner.Planner
 	Deleter cleaner.Deleter

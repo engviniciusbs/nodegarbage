@@ -75,7 +75,8 @@ func main() {
 		println("Error:", err.Error())
 		return
 	}
-	userRules, problems := rules.LoadUserDir(filepath.Join(dir, "rules.d"))
+	userRulesDir := filepath.Join(dir, "rules.d")
+	userRules, problems := rules.LoadUserDir(userRulesDir)
 	rs = append(rs, userRules...)
 
 	// Always protect every possible drive letter, independent of volumes.List.
@@ -93,10 +94,12 @@ func main() {
 		func(v string) bool { return a != nil && a.IsScanned(v) }, time.Now)
 
 	a = app.New(app.Deps{
-		Store:      st,
-		Volumes:    volumes.List,
-		NewScanner: func(string) scanner.Scanner { return &scanner.WalkScanner{FS: scanner.OSFS()} },
-		Rules:      rs, RuleProblems: problems, Protector: prot, Classifier: cl,
+		Store:   st,
+		Volumes: volumes.List,
+		NewScanner: func(_ string, workers int) scanner.Scanner {
+			return &scanner.WalkScanner{FS: scanner.OSFS(), Workers: workers}
+		},
+		Rules: rs, RuleProblems: problems, UserRulesDir: userRulesDir, Protector: prot, Classifier: cl,
 		Planner: planner, Deleter: cleaner.OSDeleter(),
 		NewProvider: func(p ai.Profile, key string) (ai.Provider, error) { return ai.NewProvider(p, key, nil) },
 		SecretGet:   secrets.Get, SecretSet: secrets.Set, SecretDelete: secrets.Delete,

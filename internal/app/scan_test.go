@@ -102,7 +102,7 @@ func newTestApp(t *testing.T, sc scanner.Scanner, st *store.Store) (*App, *rec) 
 	r := &rec{}
 	a := New(Deps{
 		Store: st, Rules: rs, Protector: prot, Classifier: cl, Emitter: r,
-		NewScanner: func(string) scanner.Scanner { return sc },
+		NewScanner: func(string, int) scanner.Scanner { return sc },
 		Now:        time.Now,
 	})
 	return a, r

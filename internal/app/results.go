@@ -60,7 +60,7 @@ func nodeID(s *session, id int32) (tree.NodeID, bool) {
 	if id == -1 {
 		return s.tree.Root, true
 	}
-	if id < 0 || int(id) >= len(s.tree.Nodes) {
+	if id < 0 || int(id) >= len(s.tree.Nodes) || s.tree.IsRemoved(tree.NodeID(id)) {
 		return tree.NoNode, false
 	}
 	return tree.NodeID(id), true
@@ -68,7 +68,7 @@ func nodeID(s *session, id int32) (tree.NodeID, bool) {
 
 func (a *App) nodeDTO(s *session, id tree.NodeID) NodeDTO {
 	n := s.tree.Nodes[id]
-	cls := s.classes.Get(s.tree, id)
+	cls := a.effective(s, id)
 	d := NodeDTO{
 		ID: int32(id), Name: n.Name, Path: s.tree.Path(id), Size: n.TotalSize, Files: n.TotalFiles,
 		LatestMod: n.TreeLatest, HasChildren: len(n.Children) > 0,
@@ -84,7 +84,7 @@ func (a *App) nodeDTO(s *session, id tree.NodeID) NodeDTO {
 			d.Explain, d.Regenerable, d.Command = r.Explain, r.Regenerable, r.Command
 		}
 	}
-	if op, ok := s.aiOpinion[id]; ok {
+	if op, ok := s.aiOpinions[id]; ok {
 		d.AI = &AIOpinionDTO{Verdict: string(op.Verdict), Reason: op.Reason, Confidence: op.Confidence}
 	}
 	return d
@@ -210,43 +210,18 @@ func (a *App) summarize(s *session) SummaryDTO {
 	sum := SummaryDTO{ByCategory: []CategoryDTO{}}
 	cats := map[string]*CategoryDTO{}
 	t := s.tree
-	for i := range t.Nodes {
-		id := tree.NodeID(i)
-		c := s.classes.Get(t, id)
-		if c.Verdict == "" || c.Category == "" {
-			continue
+	if len(t.Nodes) == 0 {
+		return sum
+	}
+	// Top-down over the reachable nodes: a counted node covers its whole
+	// subtree, so nested classified nodes (rule or AI) never count twice.
+	stack := []tree.NodeID{t.Root}
+	for len(stack) > 0 {
+		id := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if !a.countNode(s, id, &sum, cats) {
+			stack = append(stack, t.Nodes[id].Children...)
 		}
-		switch c.Source {
-		case rules.SourceRule, rules.SourceAI:
-		case rules.SourceProtected:
-			if c.RuleID == "" {
-				continue // plain protected areas are not reported
-			}
-		default:
-			continue
-		}
-		if p := t.Nodes[i].Parent; p != tree.NoNode {
-			pc := s.classes.Get(t, p)
-			if pc.Source == c.Source && pc.RuleID == c.RuleID && pc.Verdict == c.Verdict {
-				continue // herdado do pai
-			}
-		}
-		size := t.Nodes[i].TotalSize
-		switch c.Verdict {
-		case rules.Safe:
-			sum.SafeBytes += size
-		case rules.Caution:
-			sum.CautionBytes += size
-		case rules.Keep:
-			sum.KeepBytes += size
-		}
-		cd := cats[string(c.Category)]
-		if cd == nil {
-			cd = &CategoryDTO{Category: string(c.Category)}
-			cats[string(c.Category)] = cd
-		}
-		cd.Bytes += size
-		cd.Count++
 	}
 	for _, c := range cats {
 		sum.ByCategory = append(sum.ByCategory, *c)
@@ -258,4 +233,47 @@ func (a *App) summarize(s *session) SummaryDTO {
 		return sum.ByCategory[i].Category < sum.ByCategory[j].Category
 	})
 	return sum
+}
+
+// countNode adds the node to the summary if it is reported (a rule, AI or
+// named-protected classification) and returns whether it did.
+func (a *App) countNode(s *session, id tree.NodeID, sum *SummaryDTO, cats map[string]*CategoryDTO) bool {
+	c := a.effective(s, id)
+	if c.Verdict == "" {
+		return false
+	}
+	switch c.Source {
+	case rules.SourceRule:
+		if c.Category == "" {
+			return false
+		}
+	case rules.SourceAI:
+	case rules.SourceProtected:
+		if c.RuleID == "" || c.Category == "" {
+			return false // plain protected areas are not reported
+		}
+	default:
+		return false
+	}
+	size := s.tree.Nodes[id].TotalSize
+	switch c.Verdict {
+	case rules.Safe:
+		sum.SafeBytes += size
+	case rules.Caution:
+		sum.CautionBytes += size
+	case rules.Keep:
+		sum.KeepBytes += size
+	}
+	cat := string(c.Category)
+	if cat == "" {
+		cat = "ai"
+	}
+	cd := cats[cat]
+	if cd == nil {
+		cd = &CategoryDTO{Category: cat}
+		cats[cat] = cd
+	}
+	cd.Bytes += size
+	cd.Count++
+	return true
 }

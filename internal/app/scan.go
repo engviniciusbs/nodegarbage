@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -20,11 +21,11 @@ const (
 
 // session é o estado em memória de um volume varrido.
 type session struct {
-	root      string
-	tree      *tree.Tree
-	classes   *rules.Classifications
-	aiOpinion map[tree.NodeID]ai.Resolved
-	scannedAt time.Time
+	root       string
+	tree       *tree.Tree
+	classes    *rules.Classifications
+	aiOpinions map[tree.NodeID]ai.Resolved // replaced, never mutated, once published
+	scannedAt  time.Time
 }
 
 func volKey(v string) string {
@@ -39,7 +40,7 @@ func (a *App) classify(t *tree.Tree) *rules.Classifications {
 }
 
 func (a *App) setSession(root string, t *tree.Tree, at time.Time) {
-	s := &session{root: root, tree: t, classes: a.classify(t), aiOpinion: map[tree.NodeID]ai.Resolved{}, scannedAt: at}
+	s := &session{root: root, tree: t, classes: a.classify(t), aiOpinions: map[tree.NodeID]ai.Resolved{}, scannedAt: at}
 	a.mu.Lock()
 	a.sessions[volKey(root)] = s
 	a.mu.Unlock()
@@ -161,7 +162,7 @@ func (a *App) scanOne(ctx context.Context, root string) bool {
 		}
 	}()
 
-	err := a.deps.NewScanner(root).Scan(ctx, root, b, prog)
+	err := a.deps.NewScanner(root, a.loadSettings().Workers).Scan(ctx, root, b, prog)
 	close(stop)
 	<-finished
 	emitProgress()
@@ -202,4 +203,78 @@ func (a *App) scanOne(ctx context.Context, root string) bool {
 	}
 	a.emit(EvScanDone, done)
 	return true
+}
+
+// updateSession replaces the session of a volume copy-on-write: fn gets the
+// current (immutable) session and returns the new one, or nil for no change.
+// fn runs without the lock; the swap only commits if nobody replaced the
+// session meanwhile, otherwise fn is run again on the new one. Readers
+// therefore always see a complete session.
+func (a *App) updateSession(key string, fn func(old *session) *session) {
+	for {
+		a.mu.RLock()
+		old := a.sessions[key]
+		a.mu.RUnlock()
+		if old == nil {
+			return
+		}
+		next := fn(old)
+		if next == nil {
+			return
+		}
+		a.mu.Lock()
+		if a.sessions[key] == old {
+			a.sessions[key] = next
+			a.mu.Unlock()
+			return
+		}
+		a.mu.Unlock()
+	}
+}
+
+// sessionKeys lists the keys of all sessions, sorted.
+func (a *App) sessionKeys() []string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	keys := make([]string, 0, len(a.sessions))
+	for k := range a.sessions {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// reclassifyAll recomputes the classification of every session (after the
+// protected paths changed).
+func (a *App) reclassifyAll() {
+	for _, k := range a.sessionKeys() {
+		a.updateSession(k, func(old *session) *session {
+			n := *old
+			n.classes = a.classify(old.tree)
+			return &n
+		})
+	}
+}
+
+// effective is the classification of a node merged with the AI opinion, if any.
+func (a *App) effective(s *session, id tree.NodeID) rules.Classification {
+	c := s.classes.Get(s.tree, id)
+	if op, ok := s.aiOpinions[id]; ok {
+		c = ai.Merge(c, op)
+	}
+	return c
+}
+
+// allSessions returns the sessions sorted by volume key.
+func (a *App) allSessions() []*session {
+	keys := a.sessionKeys()
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	out := make([]*session, 0, len(keys))
+	for _, k := range keys {
+		if s := a.sessions[k]; s != nil {
+			out = append(out, s)
+		}
+	}
+	return out
 }
