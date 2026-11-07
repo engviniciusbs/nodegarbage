@@ -42,7 +42,8 @@ let unsubs: (() => void)[] = []
 
 const msg = (e: unknown) => (typeof e === 'string' ? e : e instanceof Error ? e.message : String(e))
 
-export const needsRisk = (it: PlanItemDTO) => it.verdict !== 'safe'
+/** Caution/unknown items, and every AI-suggested item (an unverified opinion), need "Entendo o risco". */
+export const needsRisk = (it: PlanItemDTO) => it.verdict !== 'safe' || it.source === 'ai'
 
 export function canConfirm(): boolean {
   const p = clean.plan

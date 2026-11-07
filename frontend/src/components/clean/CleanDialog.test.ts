@@ -216,4 +216,14 @@ describe('CleanDialog during execution', () => {
     handlers['clean:done']({ freed: 1, results: [{ path: 'a', status: 'ok', reason: '', freed: 1, skippedFiles: [] }], warning: 'snapshot_not_saved' })
     expect(await screen.findByText(strings.clean.snapshotNotSaved)).toBeInTheDocument()
   })
+
+  it('requires the risk checkbox for AI-suggested items even when safe', async () => {
+    const aiItem = { ...plan().items[0], path: 'C:\\data\\item-3', source: 'ai', verdict: 'safe' }
+    m.PlanClean.mockResolvedValue(plan({ items: [aiItem] }) as never)
+    render(CleanDialog, { open: true, onClose })
+    const box = await screen.findByRole('checkbox', { name: strings.clean.understandRiskFor('item-3') })
+    expect(confirmBtn()).toBeDisabled()
+    await userEvent.click(box)
+    expect(confirmBtn()).toBeEnabled()
+  })
 })
