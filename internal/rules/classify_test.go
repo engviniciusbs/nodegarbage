@@ -199,15 +199,16 @@ func TestProtectedTreeRoot(t *testing.T) {
 
 func TestRuleMatchWithProtectedDescendant(t *testing.T) {
 	// A rule that would consume a directory holding a protected path must not hide it.
-	r := Rule{ID: "local", Category: "temp", Match: Match{Path: `%LOCALAPPDATA%`}, Verdict: Safe, Action: ActionDeleteDir}
+	r := Rule{ID: "local", Category: "temp", Match: Match{Path: `%LOCALAPPDATA%\Stuff`}, Verdict: Safe, Action: ActionDeleteDir}
 	tr := buildTree(t, `C:\`, dirSpec{rel: `Users`}, dirSpec{rel: `Users\dev`}, dirSpec{rel: `Users\dev\AppData`},
-		dirSpec{rel: `Users\dev\AppData\Local`}, dirSpec{rel: `Users\dev\AppData\Local\vault`}, dirSpec{rel: `Users\dev\AppData\Local\junk`})
-	p := NewProtector(fakeEnv, []string{`C:\`}, []string{`%LOCALAPPDATA%\vault`})
+		dirSpec{rel: `Users\dev\AppData\Local`}, dirSpec{rel: `Users\dev\AppData\Local\Stuff`},
+		dirSpec{rel: `Users\dev\AppData\Local\Stuff\vault`}, dirSpec{rel: `Users\dev\AppData\Local\Stuff\junk`})
+	p := NewProtector(fakeEnv, []string{`C:\`}, []string{`%LOCALAPPDATA%\Stuff\vault`})
 	cls := NewClassifier([]Rule{r}, p, fakeEnv, fakeFS{}.exists, fakeFS{}.listNames).Classify(tr, testNow)
-	if got := cls.Get(tr, find(t, tr, `C:\Users\dev\AppData\Local\vault`)); got.Source != SourceProtected || got.Verdict != Keep {
+	if got := cls.Get(tr, find(t, tr, `C:\Users\dev\AppData\Local\Stuff\vault`)); got.Source != SourceProtected || got.Verdict != Keep {
 		t.Fatalf("vault: %+v", got)
 	}
-	if got := cls.Get(tr, find(t, tr, `C:\Users\dev\AppData\Local\junk`)); got.RuleID != "local" {
+	if got := cls.Get(tr, find(t, tr, `C:\Users\dev\AppData\Local\Stuff\junk`)); got.RuleID != "local" {
 		t.Fatalf("junk: %+v", got)
 	}
 }
@@ -389,12 +390,12 @@ func TestExactAncestorStopsInheritance(t *testing.T) {
 	if got := cls.Get(tr, find(t, tr, `C:\Users\other`)); got.RuleID != "user.users" {
 		t.Fatalf("other: %+v", got)
 	}
-	for _, p := range []string{`C:\Users\dev\Documents\thesis`, `C:\Users\dev\AppData`} {
+	for _, p := range []string{`C:\Users\dev\Documents\thesis`} {
 		if got := cls.Get(tr, find(t, tr, p)); got.Source != SourceUnknown || got.Verdict != "" {
 			t.Errorf("%s: %+v (must not inherit safe across an exact-protected ancestor)", p, got)
 		}
 	}
-	for _, p := range []string{`C:\Users\dev`, `C:\Users\dev\Documents`} {
+	for _, p := range []string{`C:\Users\dev`, `C:\Users\dev\Documents`, `C:\Users\dev\AppData`} {
 		if got := cls.Get(tr, find(t, tr, p)); got.Source != SourceProtected {
 			t.Errorf("%s: %+v", p, got)
 		}

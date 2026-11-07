@@ -44,6 +44,10 @@ var (
 		`%USERPROFILE%\Videos`,
 		`%USERPROFILE%\Music`,
 		`%USERPROFILE%\Downloads`,
+		`%USERPROFILE%\AppData`,
+		`%USERPROFILE%\AppData\Local`,
+		`%USERPROFILE%\AppData\Roaming`,
+		`%USERPROFILE%\AppData\LocalLow`,
 	}
 )
 

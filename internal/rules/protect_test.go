@@ -100,7 +100,7 @@ func TestExactOnly(t *testing.T) {
 		expectKind(t, p, s, ProtectExact)
 	}
 	expectKind(t, p, `C:\Users\dev\Documents\proj\node_modules`, ProtectNone)
-	expectKind(t, p, `C:\Users\dev\AppData`, ProtectNone)
+	expectKind(t, p, `C:\Users\dev\AppData\Local\Packages`, ProtectNone)
 	expectKind(t, p, `C:\pagefile.sys.bak`, ProtectNone)
 	expectKind(t, p, `E:\`, ProtectNone) // not a known volume root
 }
@@ -122,7 +122,8 @@ func TestHasProtectedDescendant(t *testing.T) {
 		`C:\`:                         true,
 		`D:\`:                         true,  // D:\vault, $Recycle.Bin, ...
 		`D:\src\app`:                  false, // .git excluded
-		`C:\Users\dev\AppData`:        false,
+		`C:\Users\dev\AppData`:        true,  // AppData\Local etc. are exact-protected
+		`C:\Users\dev\AppData\Local`:  false,
 		`C:\Windows\System32`:         true, // inside a protected subtree
 		`C:\Windows\Temp`:             false,
 		`C:\Users\dev\Documents`:      false, // the path itself is not "below"
@@ -210,4 +211,19 @@ func TestSetExtraConcurrentWithCheck(t *testing.T) {
 		p.HasProtectedDescendant(`D:\`)
 	}
 	<-done
+}
+
+// The AppData folders themselves are exact-protected; their contents are not.
+func TestAppDataExact(t *testing.T) {
+	p := newTestProtector()
+	for _, s := range []string{
+		`C:\Users\dev\AppData`, `c:/users/DEV/appdata/local/`, `C:\Users\dev\AppData\Roaming`, `C:\Users\dev\AppData\LocalLow`,
+	} {
+		expectKind(t, p, s, ProtectExact)
+	}
+	expectKind(t, p, `C:\Users\dev\AppData\Local\Temp`, ProtectNone)
+	expectKind(t, p, `C:\Users\dev\AppData\Roaming\Code\Cache`, ProtectNone)
+	if !p.HasProtectedDescendant(`C:\Users\dev`) {
+		t.Error("profile must hold protected descendants")
+	}
 }
