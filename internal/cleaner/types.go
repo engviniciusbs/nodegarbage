@@ -59,6 +59,9 @@ const (
 	ReasonInvalidAction = "invalid_action"
 	// ReasonInvalidSize: the request has a negative Size.
 	ReasonInvalidSize = "invalid_size"
+	// ReasonChanged (Recheck): the item no longer canonicalizes to the
+	// planned path, e.g. it was replaced by a junction.
+	ReasonChanged = "changed"
 )
 
 // Item warnings.

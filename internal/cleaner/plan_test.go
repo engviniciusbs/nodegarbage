@@ -575,3 +575,49 @@ func TestInvalidAction(t *testing.T) {
 		t.Fatalf("reason = %q", got)
 	}
 }
+
+func TestRecheck(t *testing.T) {
+	d := newFakeDeps()
+	pl, _ := newTestPlanner(d)
+	dir := PlanItem{Path: `D:\proj\node_modules`, Size: 1, Class: clsSafeDir}
+	contents := PlanItem{Path: `D:\cache`, Size: 1, Class: clsSafeContents}
+
+	// Missing.
+	if got := pl.Recheck(dir); got != ReasonNotFound {
+		t.Fatalf("missing: %q", got)
+	}
+	d.exist(dir.Path, contents.Path)
+	if got := pl.Recheck(dir); got != "" {
+		t.Fatalf("ok: %q", got)
+	}
+	// .git below a delete_dir item is allowed (same rule as Plan).
+	d.git[strings.ToLower(dir.Path)] = true
+	if got := pl.Recheck(dir); got != "" {
+		t.Fatalf("delete_dir with git: %q", got)
+	}
+	d.git[strings.ToLower(contents.Path)] = true
+	if got := pl.Recheck(contents); got != ReasonContainsGit {
+		t.Fatalf("delete_contents with git: %q", got)
+	}
+	// Became a junction elsewhere.
+	d.canon[strings.ToLower(dir.Path)] = `D:\repo`
+	if got := pl.Recheck(dir); got != ReasonChanged {
+		t.Fatalf("changed: %q", got)
+	}
+	// Same path, other case/separators: still the same item.
+	d.canon[strings.ToLower(dir.Path)] = `d:/PROJ/node_modules/`
+	if got := pl.Recheck(dir); got != "" {
+		t.Fatalf("case differs: %q", got)
+	}
+	// Protected / contains protected.
+	prot := PlanItem{Path: `C:\Windows\System32`, Size: 1, Class: clsSafeDir}
+	d.exist(prot.Path)
+	if got := pl.Recheck(prot); got != ReasonProtected {
+		t.Fatalf("protected: %q", got)
+	}
+	users := PlanItem{Path: `C:\Users`, Size: 1, Class: clsSafeDir}
+	d.exist(users.Path)
+	if got := pl.Recheck(users); got != ReasonContainsProtected {
+		t.Fatalf("contains protected: %q", got)
+	}
+}

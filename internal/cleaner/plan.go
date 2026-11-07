@@ -191,19 +191,10 @@ func (pl *Planner) check(rq Request, mode Mode, bins map[string]binInfo) (string
 	if err != nil || canon == "" {
 		return ReasonNotFound, candidate{}
 	}
-	if pl.prot.Check(canon) != rules.ProtectNone {
-		return ReasonProtected, candidate{}
-	}
-	if pl.prot.HasProtectedDescendant(canon) {
-		return ReasonContainsProtected, candidate{}
-	}
 	norm := rules.NormalizePath(canon)
 	sameAsRequested := norm == rules.NormalizePath(rq.Path)
-	// The delete_dir exception trusts Class, which describes the requested
-	// path: it only holds if that path is the item itself (not a junction
-	// or symlink leading elsewhere, e.g. a "node_modules" link to a repo).
-	if (cls.Action != rules.ActionDeleteDir || !sameAsRequested) && pl.deps.ContainsGit(canon) {
-		return ReasonContainsGit, candidate{}
+	if reason := pl.safetyCheck(canon, cls.Action, sameAsRequested); reason != "" {
+		return reason, candidate{}
 	}
 	vol := pl.deps.VolumeOf(canon)
 	if vol == "" || pl.scanned == nil || !pl.scanned(vol) {
@@ -229,6 +220,41 @@ func (pl *Planner) check(rq Request, mode Mode, bins map[string]binInfo) (string
 		item.Warnings = append(item.Warnings, WarnCanonicalDiffers)
 	}
 	return "", candidate{norm: norm, vol: vol, item: item}
+}
+
+// safetyCheck runs the checks shared by Plan and Recheck on a canonical
+// path: Protector.Check, HasProtectedDescendant and ContainsGit.
+func (pl *Planner) safetyCheck(canon string, action rules.Action, sameAsRequested bool) string {
+	if pl.prot.Check(canon) != rules.ProtectNone {
+		return ReasonProtected
+	}
+	if pl.prot.HasProtectedDescendant(canon) {
+		return ReasonContainsProtected
+	}
+	// The delete_dir exception trusts Class, which describes the requested
+	// path: it only holds if that path is the item itself (not a junction
+	// or symlink leading elsewhere, e.g. a "node_modules" link to a repo).
+	if (action != rules.ActionDeleteDir || !sameAsRequested) && pl.deps.ContainsGit(canon) {
+		return ReasonContainsGit
+	}
+	return ""
+}
+
+// Recheck re-validates a planned item right before it is deleted, so that a
+// change since planning (item gone, replaced by a junction, a .git or
+// protected path appeared) is refused. It returns "" when the item may be
+// deleted, else ReasonNotFound, ReasonChanged (the item no longer
+// canonicalizes to itself), ReasonProtected, ReasonContainsProtected or
+// ReasonContainsGit. Pass it to Execute.
+func (pl *Planner) Recheck(it PlanItem) string {
+	canon, err := pl.deps.Canonicalize(it.Path)
+	if err != nil || canon == "" {
+		return ReasonNotFound
+	}
+	if rules.NormalizePath(canon) != rules.NormalizePath(it.Path) {
+		return ReasonChanged
+	}
+	return pl.safetyCheck(canon, it.Class.Action, true)
 }
 
 // Redeem returns the plan for planID if token matches and it has not
