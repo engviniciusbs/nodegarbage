@@ -78,11 +78,10 @@ func main() {
 	userRules, problems := rules.LoadUserDir(filepath.Join(dir, "rules.d"))
 	rs = append(rs, userRules...)
 
-	var roots []string
-	if vs, err := volumes.List(); err == nil {
-		for _, v := range vs {
-			roots = append(roots, v.Root)
-		}
+	// Always protect every possible drive letter, independent of volumes.List.
+	roots := make([]string, 0, 26)
+	for c := 'A'; c <= 'Z'; c++ {
+		roots = append(roots, string(c)+`:\`)
 	}
 	prot := rules.NewProtector(os.Getenv, roots, nil)
 	exists := func(p string) bool { _, err := os.Stat(p); return err == nil }

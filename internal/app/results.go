@@ -213,7 +213,16 @@ func (a *App) summarize(s *session) SummaryDTO {
 	for i := range t.Nodes {
 		id := tree.NodeID(i)
 		c := s.classes.Get(t, id)
-		if c.Source == rules.SourceUnknown || c.Source == "" || c.Verdict == "" {
+		if c.Verdict == "" || c.Category == "" {
+			continue
+		}
+		switch c.Source {
+		case rules.SourceRule, rules.SourceAI:
+		case rules.SourceProtected:
+			if c.RuleID == "" {
+				continue // plain protected areas are not reported
+			}
+		default:
 			continue
 		}
 		if p := t.Nodes[i].Parent; p != tree.NoNode {

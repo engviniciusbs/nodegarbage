@@ -60,8 +60,14 @@ func TestSummaryNoDoubleCount(t *testing.T) {
 	if s.SafeBytes != 1500 {
 		t.Fatalf("safe=%d want 1500", s.SafeBytes)
 	}
+	if s.KeepBytes != 0 {
+		t.Fatalf("keep=%d: root/protected areas must be excluded", s.KeepBytes)
+	}
 	var found bool
 	for _, c := range s.ByCategory {
+		if c.Category == "" {
+			t.Fatalf("empty category in %+v", s.ByCategory)
+		}
 		if c.Category == "build-artifact" {
 			found = true
 			if c.Count != 1 || c.Bytes != 1500 {
