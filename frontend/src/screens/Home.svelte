@@ -1,12 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import VolumeCard from '../components/home/VolumeCard.svelte'
-  import AdminBanner from '../components/home/AdminBanner.svelte'
   import Button from '../components/ui/Button.svelte'
   import Skeleton from '../components/ui/Skeleton.svelte'
   import EmptyState from '../components/ui/EmptyState.svelte'
   import ErrorState from '../components/ui/ErrorState.svelte'
-  import { ListVolumes, IsElevated } from '$lib/api'
+  import { ListVolumes } from '$lib/api'
   import type { VolumeDTO } from '$lib/api'
   import { route } from '$lib/route.svelte'
   import { startScan } from '$lib/stores/scan.svelte'
@@ -15,7 +14,6 @@
   let volumes = $state<VolumeDTO[]>([])
   let loading = $state(true)
   let error = $state('')
-  let elevated = $state(true)
   let selected = $state<string[]>([])
   let startError = $state('')
 
@@ -23,9 +21,7 @@
     loading = true
     error = ''
     try {
-      const [v, e] = await Promise.all([ListVolumes(), IsElevated()])
-      volumes = v
-      elevated = e
+      volumes = await ListVolumes()
     } catch (e) {
       error = `${strings.home.loadError} ${e instanceof Error ? e.message : String(e)}`
     } finally {
@@ -50,9 +46,7 @@
   onMount(load)
 </script>
 
-<div class="space-y-4">
-  {#if !loading && !error && !elevated}<AdminBanner />{/if}
-
+<div class="max-w-[960px] space-y-4">
   {#if loading}
     <Skeleton lines={2} />
   {:else if error}
@@ -61,7 +55,7 @@
     <EmptyState title={strings.home.emptyTitle} description={strings.home.emptyDescription} />
   {:else}
     <p class="text-sm text-muted">{strings.home.subtitle}</p>
-    <ul class="space-y-3" aria-label={strings.home.listLabel}>
+    <ul class="space-y-2" aria-label={strings.home.listLabel}>
       {#each volumes as v (v.root)}
         <li>
           <VolumeCard volume={v} checked={selected.includes(v.root)} onToggle={() => toggle(v.root)} />
