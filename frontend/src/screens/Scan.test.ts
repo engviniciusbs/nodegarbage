@@ -86,4 +86,17 @@ describe('scan store + Scan screen', () => {
     await userEvent.click(screen.getByRole('button', { name: strings.scan.back }))
     expect(route.current).toBe('home')
   })
+
+  it('a save warning keeps the scan usable: shows it and offers the results', async () => {
+    render(Scan)
+    handlers['scan:done']({ ...doneDto('C:\\'), warning: 'snapshot_not_saved' })
+    handlers['scan:done'](doneDto('D:\\'))
+    expect(await screen.findByText(strings.scan.warning.snapshot_not_saved)).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(scanState.running).toBe(false)
+    expect(route.current).toBe('scan')
+    await userEvent.click(screen.getByRole('button', { name: strings.scan.viewResults }))
+    expect(route.current).toBe('results')
+    expect(route.volume).toBe('C:\\')
+  })
 })

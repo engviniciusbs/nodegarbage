@@ -14,6 +14,10 @@ import (
 	"github.com/engviniciusbs/nodegarbage/internal/tree"
 )
 
+// WarnSnapshotNotSaved (ScanDoneDTO.Warning, CleanDoneDTO.Warning): the
+// result is in memory but could not be written to the local database.
+const WarnSnapshotNotSaved = "snapshot_not_saved"
+
 const (
 	topFilesN        = 1000
 	progressInterval = 100 * time.Millisecond
@@ -186,10 +190,10 @@ func (a *App) scanOne(ctx context.Context, root string) bool {
 	if a.deps.Store != nil {
 		sn := store.Snapshot{Volume: root, ScannedAt: at, Engine: scanner.EngineWalk,
 			Duration: time.Since(start), Tree: t}
+		// A save failure is not fatal: the scan stays usable in this session,
+		// it just won't survive a restart.
 		if err := a.deps.Store.SaveSnapshot(ctx, sn); err != nil {
-			done.Error = err.Error()
-			a.emit(EvScanDone, done)
-			return ctx.Err() == nil
+			done.Warning = WarnSnapshotNotSaved
 		}
 	}
 	a.setSession(root, t, at)

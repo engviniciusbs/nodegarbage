@@ -69,6 +69,8 @@ export interface ScanDoneDTO {
   volume: string
   durationMs: number
   error: string
+  /** Non-fatal problem code (e.g. 'snapshot_not_saved'); the result is still usable. */
+  warning?: string
   deniedCount: number
   deniedSample: string[]
 }

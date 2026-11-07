@@ -32,7 +32,10 @@ function onDone(d: ScanDoneDTO): void {
   if (canceled || finished) scanState.running = false
   if (!finished || canceled) return
   const anyError = scanState.queue.some((r) => scanState.done[r].error)
-  if (!anyError) {
+  // A warning (e.g. the snapshot was not saved) does not block the results:
+  // the Scan screen shows it with a button to open them.
+  const anyWarning = scanState.queue.some((r) => scanState.done[r].warning)
+  if (!anyError && !anyWarning) {
     route.volume = scanState.queue[0]
     route.current = 'results'
   }

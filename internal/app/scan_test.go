@@ -173,3 +173,29 @@ func TestCancelScan(t *testing.T) {
 		t.Fatalf("done=%v", done)
 	}
 }
+
+// A snapshot save failure must not discard the scan: the session is kept and
+// the failure is reported as a non-fatal warning.
+func TestScanSaveFailureKeepsSession(t *testing.T) {
+	st, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, r := newTestApp(t, fakeScanner{}, st)
+	st.Close() // every SaveSnapshot now fails
+	if err := a.StartScan([]string{`C:\`}); err != nil {
+		t.Fatal(err)
+	}
+	a.waitScan()
+	done := r.of(EvScanDone)
+	if len(done) != 1 {
+		t.Fatalf("done=%v", done)
+	}
+	d := done[0].(ScanDoneDTO)
+	if d.Error != "" || d.Warning == "" {
+		t.Fatalf("done = %+v, want no error and a warning", d)
+	}
+	if !a.IsScanned(`C:\`) {
+		t.Fatal("session discarded after save failure")
+	}
+}

@@ -25,9 +25,12 @@ type ProgressDTO struct {
 }
 
 type ScanDoneDTO struct {
-	Volume       string   `json:"volume"`
-	DurationMs   int64    `json:"durationMs"`
-	Error        string   `json:"error"`
+	Volume     string `json:"volume"`
+	DurationMs int64  `json:"durationMs"`
+	Error      string `json:"error"`
+	// Warning is a non-fatal problem (e.g. the snapshot could not be saved):
+	// the scan result is still available in this session.
+	Warning      string   `json:"warning"`
 	DeniedCount  int      `json:"deniedCount"`
 	DeniedSample []string `json:"deniedSample"`
 }

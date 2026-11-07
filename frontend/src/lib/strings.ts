@@ -70,6 +70,12 @@ export const strings = {
     canceledBody: 'Você cancelou a análise. Volte ao início para tentar de novo.',
     idle: 'Nenhuma análise em andamento.',
     startError: 'Não foi possível iniciar a análise.',
+    viewResults: 'Ver resultados',
+    warning: {
+      snapshot_not_saved:
+        'A análise terminou, mas não foi possível salvá-la no disco. Os resultados ficam disponíveis até fechar o app.',
+      unknown: (code: string) => `Aviso: ${code}`,
+    },
   },
   results: {
     loadError: 'Não foi possível carregar os resultados.',
