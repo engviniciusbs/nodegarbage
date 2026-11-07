@@ -38,7 +38,7 @@
   aria-level="1"
   aria-posinset={index + 1}
   aria-setsize={total}
-  aria-selected={focused}
+  aria-selected={selected}
   tabindex={focused ? 0 : -1}
   data-index={index}
   style="position:absolute;left:0;right:0;top:{index * ROW_HEIGHT}px;height:{ROW_HEIGHT}px"

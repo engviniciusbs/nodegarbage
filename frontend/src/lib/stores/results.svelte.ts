@@ -15,6 +15,9 @@ export const results = $state({
   error: '',
 })
 
+/** One-shot hint for the next TreeList mount: which row gets DOM focus (null = first). */
+export const nav = { pendingFocus: undefined as { id: number | null } | undefined }
+
 let seq = 0
 
 async function fetchChildren(id: number): Promise<NodeDTO[] | null> {
@@ -51,6 +54,7 @@ export async function openNode(id: number): Promise<void> {
   if (!node) return
   const kids = await fetchChildren(id)
   if (!kids) return
+  nav.pendingFocus = { id: null }
   results.path = [...results.path, node]
   results.currentId = id
   results.children = kids
@@ -63,6 +67,7 @@ export async function goUp(index: number): Promise<void> {
   const id = i === 0 ? ROOT_ID : path[i - 1].id
   const kids = await fetchChildren(id)
   if (!kids) return
+  nav.pendingFocus = { id: results.path[i]?.id ?? null }
   results.path = path
   results.currentId = id
   results.children = kids

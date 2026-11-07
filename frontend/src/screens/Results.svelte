@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte'
+  import { untrack, type Snippet } from 'svelte'
   import SummaryBar from '../components/results/SummaryBar.svelte'
   import Breadcrumb from '../components/results/Breadcrumb.svelte'
   import TreeList from '../components/results/TreeList.svelte'
@@ -25,7 +25,11 @@
     const volume = route.volume
     summary = undefined
     focusedId = null
-    void loadVolume(volume)
+    // Store calls read their own state; keep that out of this effect's dependencies.
+    untrack(() => {
+      if (volume !== results.volume) void loadVolume(volume)
+      else if (volume) void refresh()
+    })
     if (!volume) return
     GetSummary(volume)
       .then((s) => {

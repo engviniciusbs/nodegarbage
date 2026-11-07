@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte'
   import TreeRow from './TreeRow.svelte'
   import type { NodeDTO } from '$lib/api'
-  import { results, openNode, goUp } from '$lib/stores/results.svelte'
+  import { results, nav, openNode, goUp } from '$lib/stores/results.svelte'
   import { selection, toggle } from '$lib/stores/selection.svelte'
   import { ROW_HEIGHT, visibleRange } from '$lib/virtual'
   import { strings } from '$lib/strings'
@@ -21,6 +21,12 @@
   onMount(() => {
     const measure = () => (viewport = el?.clientHeight ?? 0)
     measure()
+    const pending = nav.pendingFocus
+    if (pending) {
+      nav.pendingFocus = undefined
+      const idx = pending.id === null ? -1 : items.findIndex((n) => n.id === pending.id)
+      void moveTo(Math.max(0, idx))
+    }
     if (typeof ResizeObserver === 'undefined' || !el) return
     const ro = new ResizeObserver(measure)
     ro.observe(el)
