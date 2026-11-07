@@ -15,6 +15,7 @@ export {
   CancelScan,
   GetSummary,
   GetChildren,
+  LocatePath,
   ListFiles,
   GetTopFiles,
   GetExtensions,
@@ -42,6 +43,7 @@ export type CategoryDTO = app.CategoryDTO
 export type CleanupDTO = app.CleanupDTO
 export type ExtDTO = app.ExtDTO
 export type FileDTO = app.FileDTO
+export type LocateDTO = app.LocateDTO
 export type HistoryDTO = app.HistoryDTO
 export type NodeDTO = app.NodeDTO
 export type PayloadPreviewDTO = app.PayloadPreviewDTO
