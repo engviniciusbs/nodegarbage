@@ -3,6 +3,7 @@
   import ResultsHeader from '../components/results/ResultsHeader.svelte'
   import SummaryBar from '../components/results/SummaryBar.svelte'
   import Breadcrumb from '../components/results/Breadcrumb.svelte'
+  import FilterBar from '../components/results/FilterBar.svelte'
   import ViewTabs, { type ResultsView } from '../components/results/ViewTabs.svelte'
   import ListHeader from '../components/results/ListHeader.svelte'
   import TreeList from '../components/results/TreeList.svelte'
@@ -18,7 +19,15 @@
   import { GetSummary, ListVolumes } from '$lib/api'
   import type { SummaryDTO } from '$lib/api'
   import { route } from '$lib/route.svelte'
-  import { results, loadVolume, openNode, refresh, toggleCategory } from '$lib/stores/results.svelte'
+  import {
+    results,
+    loadVolume,
+    openNode,
+    refresh,
+    clearFilter,
+    retryFilter,
+    openFiltered,
+  } from '$lib/stores/results.svelte'
   import { clean } from '$lib/stores/clean.svelte'
   import { pickScannedVolume } from '$lib/volumes'
   import { strings } from '$lib/strings'
@@ -72,9 +81,17 @@
     if (clean.doneCount > 0) untrack(() => loadSummary(route.volume))
   })
 
-  const items = $derived(
-    results.categoryFilter ? results.children.filter((c) => c.category === results.categoryFilter) : results.children,
-  )
+  // Volume-wide filter: the list shows its matches; the folder navigation underneath stays as it was.
+  const filter = $derived(results.filter)
+  const items = $derived(filter ? (results.filtered?.items ?? []) : results.children)
+  const error = $derived(filter ? results.filterError : results.error)
+  const loading = $derived(filter ? results.filterLoading && !results.filtered : results.loading && results.children.length === 0)
+  const openItem = (id: number) => {
+    const n = items.find((x) => x.id === id)
+    if (!n) return
+    if (filter) void openFiltered(n)
+    else void openNode(id)
+  }
   const focused = $derived(items.find((n) => n.id === focusedId) ?? items[0])
 
   // Treemap leaf click: in the map tab there is no visible list, so focus the item for the details panel directly.
@@ -96,7 +113,11 @@
   {:else}
     {#if summary}<SummaryBar {summary} />{/if}
     <div class="flex shrink-0 items-center justify-between gap-3 px-6 pt-3.5 pb-2">
-      <Breadcrumb volume={results.volume} path={results.path} />
+      {#if filter}
+        <FilterBar {filter} filtered={results.filtered} notice={results.filterNotice} onclear={clearFilter} />
+      {:else}
+        <Breadcrumb volume={results.volume} path={results.path} />
+      {/if}
       <ViewTabs bind:view controls={PANEL_ID} />
     </div>
     <div
@@ -108,24 +129,35 @@
         aria-labelledby="results-tab-{view}"
         class="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-stroke bg-card"
       >
-        {#if results.error}
-          <ErrorState message={results.error} onretry={refresh} />
-        {:else if results.loading && results.children.length === 0}
+        {#if error}
+          <ErrorState message={error} onretry={filter ? retryFilter : refresh} />
+        {:else if loading}
           <div class="p-3"><Skeleton lines={8} /></div>
         {:else if items.length === 0}
-          <EmptyState title={results.categoryFilter ? strings.results.emptyFiltered : strings.results.emptyFolder}>
+          <EmptyState title={filter ? strings.results.emptyFiltered : strings.results.emptyFolder}>
             {#snippet action()}
-              {#if results.categoryFilter}
-                <Button onclick={() => toggleCategory(results.categoryFilter!)}>{strings.results.clearFilter}</Button>
+              {#if filter}
+                <Button onclick={clearFilter}>{strings.results.clearFilter}</Button>
               {/if}
             {/snippet}
           </EmptyState>
         {:else}
           <!-- The list stays mounted (hidden) in the map tab: focus, scroll and focus requests survive the switch. -->
           <div class="list-panel flex min-h-0 flex-1 flex-col" hidden={view !== 'list'} data-view="list">
-            <ListHeader />
-            {#key `${results.currentId}|${results.categoryFilter}`}
-              <TreeList {items} bind:focusedId />
+            <ListHeader located={!!filter} />
+            {#key `${results.currentId}|${filter?.category}|${filter?.ruleId}`}
+              {#if filter}
+                <TreeList
+                  {items}
+                  bind:focusedId
+                  located
+                  label={strings.results.filteredListLabel(filter.label)}
+                  onenter={(n) => void openFiltered(n)}
+                  onup={clearFilter}
+                />
+              {:else}
+                <TreeList {items} bind:focusedId />
+              {/if}
             {/key}
           </div>
           {#if view === 'map'}
@@ -134,7 +166,7 @@
                 <Treemap
                   nodes={items}
                   {focusedId}
-                  onOpen={(id) => void openNode(id)}
+                  onOpen={openItem}
                   onSelect={selectFromMap}
                   onHover={(id) => (results.hoverId = id)}
                 />
@@ -144,7 +176,7 @@
           {/if}
         {/if}
       </div>
-      <DetailsPanel node={focused} />
+      <DetailsPanel node={focused} onopen={filter ? (n) => void openFiltered(n, true) : undefined} />
     </div>
     <SelectionBar>
       {#snippet actions()}<CleanAction />{/snippet}

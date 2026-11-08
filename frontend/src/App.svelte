@@ -25,6 +25,9 @@
     {#if route.current === 'results'}
       <!-- Results owns its header and keeps the page from scrolling (list and details scroll inside). -->
       <Results />
+    {:else if route.current === 'ai'}
+      <!-- The AI report owns its header too: it has the same fixed selection footer as Results. -->
+      <AIReport />
     {:else}
       <PageHeader title={strings.nav[route.current]} />
       <div class="min-h-0 flex-1 overflow-auto px-6 pb-6">
@@ -32,8 +35,6 @@
           <Home />
         {:else if route.current === 'scan'}
           <Scan />
-        {:else if route.current === 'ai'}
-          <AIReport />
         {:else if route.current === 'history'}
           <History />
         {:else if route.current === 'settings'}

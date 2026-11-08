@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('$lib/api', () => ({ GetChildren: vi.fn() }))
 
 import * as api from '$lib/api'
-import { selection, toggle, clear, selectedBytes } from './selection.svelte'
+import { selection, toggle, clear, selectedBytes, selectAll } from './selection.svelte'
 import { results, loadVolume, openNode } from './results.svelte'
 import { node } from '../../test/fixtures'
 
@@ -15,6 +15,13 @@ beforeEach(() => {
 })
 
 describe('selection', () => {
+  it('selectAll adds only selectable nodes and never removes selected ones', () => {
+    const a = node({ id: 1 })
+    toggle(a)
+    selectAll([a, node({ id: 2 }), node({ id: 3, verdict: 'keep' }), node({ id: 4, link: true })])
+    expect([...selection.paths.keys()]).toEqual([a.path, node({ id: 2 }).path])
+  })
+
   it('toggles a selectable node on and off', () => {
     const n = node({ id: 1 })
     toggle(n)

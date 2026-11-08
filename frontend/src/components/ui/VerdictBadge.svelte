@@ -2,7 +2,14 @@
   import Icon from './Icon.svelte'
   import { strings, type Verdict } from '$lib/strings'
 
-  let { verdict, source, compact = false }: { verdict: Verdict; source?: string; compact?: boolean } = $props()
+  /** `suffix` labels a non-AI source (e.g. "regra"); `label` titles the badge. */
+  let {
+    verdict,
+    source,
+    compact = false,
+    suffix,
+    label,
+  }: { verdict: Verdict; source?: string; compact?: boolean; suffix?: string; label?: string } = $props()
 
   // Icon + label (never colour alone). Verdict colours pass 4.5:1 on their own tint (tokens.css).
   const tone: Record<Verdict, string> = {
@@ -15,7 +22,7 @@
 
 <span
   class="inline-flex max-w-full items-center gap-[5px] justify-self-start rounded-full border py-0.5 pr-[9px] pl-[7px] text-xs font-semibold whitespace-nowrap {tone[verdict]}"
-  title={source === 'ai' && compact ? strings.source.ai : undefined}
+  title={label ?? (source === 'ai' && compact ? strings.source.ai : undefined)}
 >
   <Icon name={verdict} size={13} />
   <span class="truncate">{strings.verdict[verdict]}</span>
@@ -27,4 +34,5 @@
       <span class="font-normal">· {strings.source.ai}</span>
     {/if}
   {/if}
+  {#if suffix}<span class="font-normal">· {suffix}</span>{/if}
 </span>

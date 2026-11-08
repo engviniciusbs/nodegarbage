@@ -22,6 +22,7 @@ export function node(over: Partial<NodeDTO> = {}): NodeDTO {
     explain: 'Cache seguro de remover.',
     regenerable: '',
     command: '',
+    location: '',
     ...over,
   } as NodeDTO
 }

@@ -16,6 +16,7 @@ export {
   GetSummary,
   GetChildren,
   LocatePath,
+  ListFiltered,
   ListFiles,
   GetTopFiles,
   GetExtensions,
@@ -43,6 +44,8 @@ export type CategoryDTO = app.CategoryDTO
 export type CleanupDTO = app.CleanupDTO
 export type ExtDTO = app.ExtDTO
 export type FileDTO = app.FileDTO
+export type FilterDTO = app.FilterDTO
+export type FilteredDTO = app.FilteredDTO
 export type LocateDTO = app.LocateDTO
 export type HistoryDTO = app.HistoryDTO
 export type NodeDTO = app.NodeDTO

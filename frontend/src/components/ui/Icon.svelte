@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export type IconName =
     | 'home' | 'scan' | 'results' | 'ai' | 'history' | 'settings'
-    | 'safe' | 'caution' | 'keep' | 'unknown' | 'inbox' | 'link' | 'cloud' | 'denied' | 'folder'
+    | 'safe' | 'caution' | 'keep' | 'unknown' | 'inbox' | 'link' | 'cloud' | 'denied' | 'folder' | 'close'
 
   // 24x24 stroke icons (inline SVG, no icon library).
   const paths: Record<IconName, string> = {
@@ -20,6 +20,7 @@
     denied: 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM5.6 5.6l12.8 12.8',
     folder: 'M3 6.5a1.5 1.5 0 0 1 1.5-1.5h4.6l2 2h8.4a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z',
     inbox: 'M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5',
+    close: 'M6 6l12 12M18 6L6 18',
   }
 </script>
 

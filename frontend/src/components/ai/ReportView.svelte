@@ -1,75 +1,38 @@
 <script lang="ts">
-  import Panel from '../ui/Panel.svelte'
-  import VerdictBadge from '../ui/VerdictBadge.svelte'
+  import AIItemGroup from './AIItemGroup.svelte'
+  import ReportMarkdown from './ReportMarkdown.svelte'
   import type { AIReportDTO } from '$lib/api'
-  import { renderMarkdown } from '$lib/markdown'
-  import { ai, revealItem } from '$lib/stores/ai.svelte'
-  import { strings, type Verdict } from '$lib/strings'
+  import { GROUP_ORDER, groupItems, sumBytes } from '$lib/aireport'
+  import { formatBytes } from '$lib/format'
+  import { strings } from '$lib/strings'
 
   let { report }: { report: AIReportDTO } = $props()
 
-  const html = $derived(renderMarkdown(report.markdown))
-  const verdict = (v: string): Verdict => (v in strings.verdict ? (v as Verdict) : 'unknown')
   const created = $derived(new Date(report.createdAt).toLocaleString('pt-BR'))
+  const groups = $derived(groupItems(report.items ?? []))
+  const meta = $derived(
+    report.profile || report.model ? strings.ai.reportMeta(report.profile, report.model, created) : strings.ai.createdAt(created),
+  )
 </script>
 
-<Panel aria-label={strings.ai.reportTitle}>
-  <p class="mb-2 text-xs text-muted">{strings.ai.createdAt(created)} · {strings.ai.untrusted}</p>
-  <!-- renderMarkdown output is DOMPurify-sanitized; this is the only {@html} in the app. -->
-  <div class="prose-report text-sm text-primary">{@html html}</div>
-</Panel>
+<section aria-label={strings.ai.reportTitle} class="flex flex-col gap-4">
+  <header class="flex flex-col gap-1 rounded-md border border-stroke bg-card px-4 py-3">
+    <p class="m-0 font-display text-lg font-semibold text-primary tabular-nums">
+      {strings.ai.totals(formatBytes(sumBytes(groups.safe)), formatBytes(sumBytes(groups.caution)))}
+    </p>
+    <p class="m-0 text-xs text-muted">{meta} · {strings.ai.untrusted}</p>
+  </header>
 
-{#if report.items?.length}
-  <section class="mt-3" aria-label={strings.ai.itemsTitle}>
-    <h3 class="mb-2 text-sm font-semibold text-primary">{strings.ai.itemsTitle}</h3>
-    <ul class="flex flex-col gap-2">
-      {#each report.items as item (item.path)}
-        <li class="flex flex-col gap-1 rounded-md border border-stroke bg-card px-3 py-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <VerdictBadge verdict={verdict(item.verdict)} source="ai" />
-            <button
-              type="button"
-              class="cursor-pointer rounded-sm px-1 text-left font-mono text-xs break-all text-accent hover:underline"
-              aria-label={strings.ai.reveal(item.path)}
-              onclick={() => revealItem(item.path)}>{item.path}</button
-            >
-            <span class="ml-auto text-xs text-muted">{strings.ai.confidence(Math.round(item.confidence * 100))}</span>
-          </div>
-          <p class="text-sm text-primary">{item.reason}</p>
-          {#if ai.revealErrors[item.path]}
-            <p role="alert" class="text-xs text-warn-text">{ai.revealErrors[item.path]}</p>
-          {/if}
-        </li>
-      {/each}
-    </ul>
-  </section>
-{/if}
+  {#if report.items?.length}
+    {#each GROUP_ORDER as id (id)}
+      <AIItemGroup {id} items={groups[id]} />
+    {/each}
+  {/if}
 
-<style>
-  .prose-report :global(h1),
-  .prose-report :global(h2),
-  .prose-report :global(h3),
-  .prose-report :global(h4) {
-    font-weight: 600;
-    margin: 0.9em 0 0.4em;
-    color: var(--text-primary);
-  }
-  .prose-report :global(h1) { font-size: 1.25rem; }
-  .prose-report :global(h2) { font-size: 1.1rem; }
-  .prose-report :global(p) { margin: 0.5em 0; }
-  .prose-report :global(ul) { list-style: disc; padding-left: 1.4em; margin: 0.5em 0; }
-  .prose-report :global(ol) { list-style: decimal; padding-left: 1.4em; margin: 0.5em 0; }
-  .prose-report :global(code) {
-    font-family: var(--font-mono);
-    font-size: 0.85em;
-    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
-    padding: 0.1em 0.3em;
-    border-radius: var(--radius-sm);
-  }
-  .prose-report :global(pre) { overflow: auto; padding: 0.6em; border-radius: var(--radius-md); background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
-  .prose-report :global(pre code) { background: none; padding: 0; }
-  .prose-report :global(blockquote) { border-left: 3px solid var(--stroke); padding-left: 0.8em; color: var(--text-muted); }
-  .prose-report :global(table) { border-collapse: collapse; }
-  .prose-report :global(th),
-  .prose-report :global(td) { border: 1px solid var(--stroke); padding: 0.25em 0.6em; }
-</style>
+  <details class="rounded-md border border-stroke bg-card">
+    <summary class="cursor-pointer px-4 py-2.5 text-sm font-semibold text-primary">{strings.ai.fullReport}</summary>
+    <div class="border-t border-stroke-soft px-4 py-3">
+      <ReportMarkdown markdown={report.markdown} />
+    </div>
+  </details>
+</section>

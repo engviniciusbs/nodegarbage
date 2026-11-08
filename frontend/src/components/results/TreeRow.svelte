@@ -1,6 +1,8 @@
 <script lang="ts">
   import Icon from '../ui/Icon.svelte'
   import VerdictBadge from '../ui/VerdictBadge.svelte'
+  import FilteredCell from './FilteredCell.svelte'
+  import NodeFlags from './NodeFlags.svelte'
   import type { NodeDTO } from '$lib/api'
   import { formatBytes, formatCount } from '$lib/format'
   import { blockedReason } from '$lib/stores/selection.svelte'
@@ -14,6 +16,7 @@
     focused,
     selected,
     hovered = false,
+    located = false,
     ontoggle,
     onfocus,
     onopen,
@@ -24,6 +27,8 @@
     focused: boolean
     selected: boolean
     hovered?: boolean
+    /** Filtered view: show the parent folder (Local) column. */
+    located?: boolean
     ontoggle: () => void
     onfocus: () => void
     onopen: () => void
@@ -55,6 +60,7 @@
   data-index={index}
   style="position:absolute;left:0;right:0;top:{index * ROW_HEIGHT}px;height:{ROW_HEIGHT}px"
   class="list-grid border-b border-stroke-soft text-[13px] text-primary outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent {tone}"
+  class:list-grid-located={located}
   onclick={onfocus}
   ondblclick={onopen}
 >
@@ -62,24 +68,23 @@
     type="checkbox"
     tabindex="-1"
     class="m-0 size-4"
-    aria-label={strings.results.select(node.name)}
+    aria-label={located ? strings.results.selectAt(node.name, node.location) : strings.results.select(node.name)}
     title={blocked ? strings.results.blocked[blocked] : undefined}
     disabled={blocked !== ''}
     checked={selected}
     onclick={(e) => e.stopPropagation()}
     onchange={ontoggle}
   />
-  <span class="flex min-w-0 items-center gap-2">
-    <span class="shrink-0 text-muted"><Icon name="folder" size={16} /></span>
-    <span class="truncate">{node.name}</span>
-    {#if node.link}<span class="shrink-0 text-muted"><Icon name="link" size={14} /></span><span class="sr-only">{strings.results.link}</span>{/if}
-    {#if node.cloud}<span class="shrink-0 text-muted"><Icon name="cloud" size={14} /></span><span class="sr-only">{strings.results.cloud}</span>{/if}
-    {#if node.denied}<span class="shrink-0 text-muted"><Icon name="denied" size={14} /></span><span class="sr-only">{strings.results.denied}</span>{/if}
-    {#if node.inactive}
-      <span class="shrink-0 rounded-full border border-inactive-border px-1.5 py-px text-[11px] whitespace-nowrap text-warn-text">{strings.results.inactive}</span>
-    {/if}
-  </span>
+  {#if located}
+    <FilteredCell {node} />
+  {:else}
+    <span class="flex min-w-0 items-center gap-2">
+      <span class="shrink-0 text-muted"><Icon name="folder" size={16} /></span>
+      <span class="truncate">{node.name}</span>
+      <NodeFlags {node} />
+    </span>
+  {/if}
   <span class="text-right font-semibold tabular-nums">{formatBytes(node.size)}</span>
-  <span class="col-files text-right text-muted tabular-nums">{formatCount(node.files)}</span>
+  {#if !located}<span class="col-files text-right text-muted tabular-nums">{formatCount(node.files)}</span>{/if}
   <span class="flex min-w-0"><VerdictBadge {verdict} source={node.source} compact /></span>
 </div>

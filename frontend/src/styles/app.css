@@ -112,8 +112,16 @@
     padding: 0 12px;
   }
 
+  /* Filtered view: one two-line Local column, no files column (the details panel has it). */
+  .list-grid.list-grid-located {
+    grid-template-columns: 28px minmax(0, 1fr) 96px 132px;
+  }
+
   @container (max-width: 520px) {
     .list-grid {
+      grid-template-columns: 28px minmax(0, 1fr) 88px 128px;
+    }
+    .list-grid.list-grid-located {
       grid-template-columns: 28px minmax(0, 1fr) 88px 128px;
     }
     .list-grid > .col-files {

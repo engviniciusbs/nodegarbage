@@ -62,6 +62,8 @@ type NodeDTO struct {
 	Regenerable string        `json:"regenerable"`
 	Command     string        `json:"command"`
 	AI          *AIOpinionDTO `json:"ai"`
+	// Location is the parent folder path; only ListFiltered fills it.
+	Location string `json:"location"`
 }
 
 type FileDTO struct {

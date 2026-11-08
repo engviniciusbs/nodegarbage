@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { SummaryDTO } from '$lib/api'
   import { formatBytes } from '$lib/format'
-  import { results, toggleCategory } from '$lib/stores/results.svelte'
+  import { results, toggleFilter, NODE_MODULES_RULE, type ActiveFilter } from '$lib/stores/results.svelte'
   import { strings } from '$lib/strings'
 
   let { summary }: { summary: SummaryDTO } = $props()
@@ -12,6 +12,18 @@
     { id: 'caution', bytes: summary.cautionBytes, text: strings.results.cautionLabel, tone: 'text-warn-text text-[22px]' },
     { id: 'keep', bytes: summary.keepBytes, text: strings.results.keepLabel, tone: 'text-keep text-[15px]' },
   ])
+  // The fixed node_modules shortcut first (when the volume has any), then the categories.
+  const chips = $derived([
+    ...(results.shortcut && results.shortcut.count > 0
+      ? [{ key: 'rule', bytes: results.shortcut.totalBytes,
+           filter: { category: '', ruleId: NODE_MODULES_RULE, label: strings.results.nodeModules } }]
+      : []),
+    ...(summary.byCategory ?? []).map((c) => ({
+      key: `cat:${c.category}`, bytes: c.bytes, filter: { category: c.category, ruleId: '', label: label(c.category) },
+    })),
+  ] as { key: string; bytes: number; filter: ActiveFilter }[])
+  const isActive = (f: ActiveFilter) =>
+    results.filter !== null && results.filter.category === f.category && results.filter.ruleId === f.ruleId
 </script>
 
 <section
@@ -26,19 +38,19 @@
       </p>
     {/each}
   </div>
-  {#if summary.byCategory?.length}
+  {#if chips.length}
     <div role="group" aria-label={strings.results.categories} class="flex min-w-0 flex-[1_1_auto] flex-wrap justify-end gap-1.5">
-      {#each summary.byCategory as c (c.category)}
-        {@const pressed = results.categoryFilter === c.category}
+      {#each chips as c (c.key)}
+        {@const pressed = isActive(c.filter)}
         <button
           type="button"
           aria-pressed={pressed}
-          onclick={() => toggleCategory(c.category)}
+          onclick={() => toggleFilter(c.filter)}
           class="cursor-pointer rounded-full border px-2.5 py-1 text-xs whitespace-nowrap tabular-nums transition-colors {pressed
             ? 'border-accent bg-accent text-on-accent'
-            : 'border-stroke bg-chip text-primary hover:bg-field'}"
+            : 'border-stroke bg-chip text-primary hover:bg-field'} {c.key === 'rule' ? 'font-mono' : ''}"
         >
-          {label(c.category)} · {formatBytes(c.bytes)}
+          {c.filter.label} · {formatBytes(c.bytes)}
         </button>
       {/each}
     </div>
