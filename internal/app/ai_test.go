@@ -315,3 +315,59 @@ func TestBuildAIAnonymizesAllProfiles(t *testing.T) {
 		t.Errorf("shared folder should stay: %s", b.json)
 	}
 }
+
+func TestAIReportItemsCarrySessionNodes(t *testing.T) {
+	a, _, _, r, p := newAIApp(t)
+	if err := a.RunAI(p.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	a.waitAI()
+	ev := r.of(EvAIDone)[0].(AIDoneDTO).Report
+	if ev.Profile != "Teste" || ev.Model != "m1" {
+		t.Fatalf("event report profile=%q model=%q", ev.Profile, ev.Model)
+	}
+	// a cited path that is no longer in the scan
+	a.aiMu.Lock()
+	a.lastReport.Items = append(a.lastReport.Items, AIItemDTO{Path: `C:\gone`, Verdict: "safe", Reason: "x", Confidence: 0.5})
+	a.aiMu.Unlock()
+	rep, err := a.GetAIReport()
+	if err != nil || rep == nil {
+		t.Fatalf("rep=%v err=%v", rep, err)
+	}
+	var other, gone *AIItemDTO
+	for i := range rep.Items {
+		switch rep.Items[i].Path {
+		case `C:\other`:
+			other = &rep.Items[i]
+		case `C:\gone`:
+			gone = &rep.Items[i]
+		}
+	}
+	if other == nil || !other.Found || !other.Selectable || other.Node == nil {
+		t.Fatalf("other=%+v", other)
+	}
+	if n := other.Node; n.Size != 50 || n.Files != 1 || n.Verdict != "safe" || n.Source != "ai" || n.Path != `C:\other` {
+		t.Fatalf("other.node=%+v", n)
+	}
+	if gone == nil || gone.Found || gone.Selectable || gone.Node != nil {
+		t.Fatalf("gone=%+v", gone)
+	}
+}
+
+func TestAIReportKeepItemsAreNotSelectable(t *testing.T) {
+	a, fp, _, _, p := newAIApp(t)
+	fp.verdict = rules.Keep
+	if err := a.RunAI(p.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	a.waitAI()
+	rep, _ := a.GetAIReport()
+	if rep == nil || len(rep.Items) == 0 {
+		t.Fatalf("rep=%+v", rep)
+	}
+	for _, it := range rep.Items {
+		if it.Found && (it.Selectable || it.Node.Verdict != "keep") {
+			t.Fatalf("keep item selectable: %+v node=%+v", it, it.Node)
+		}
+	}
+}

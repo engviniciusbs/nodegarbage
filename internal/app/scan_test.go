@@ -93,7 +93,9 @@ func newTestApp(t *testing.T, sc scanner.Scanner, st *store.Store) (*App, *rec) 
 		Regenerable: "npm install", Explain: "Dependências do Node.",
 	}}
 	list := func(dir string) []string {
-		if strings.EqualFold(strings.TrimRight(dir, `\`), `C:\proj`) {
+		// C:\proj and the C:\projN folders of projectsScanner are projects.
+		d := strings.ToLower(strings.TrimRight(dir, `\`))
+		if strings.HasPrefix(d, `c:\proj`) && !strings.Contains(d[len(`c:\`):], `\`) {
 			return []string{"package.json", "node_modules", "src"}
 		}
 		return nil

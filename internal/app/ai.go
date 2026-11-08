@@ -44,12 +44,21 @@ type AIItemDTO struct {
 	Verdict    string  `json:"verdict"`
 	Reason     string  `json:"reason"`
 	Confidence float64 `json:"confidence"`
+	// Found reports whether the path is in the last scan; Node (nil when not
+	// found) is its current session data and effective classification.
+	Found bool     `json:"found"`
+	Node  *NodeDTO `json:"node"`
+	// Selectable mirrors what the UI may offer for cleaning (never keep,
+	// manual or link). PlanClean still validates everything again.
+	Selectable bool `json:"selectable"`
 }
 
 type AIReportDTO struct {
 	Markdown  string      `json:"markdown"`
 	Items     []AIItemDTO `json:"items"`
 	CreatedAt time.Time   `json:"createdAt"`
+	Profile   string      `json:"profile"`
+	Model     string      `json:"model"`
 }
 
 // AIDoneDTO é o payload do evento ai:done.
@@ -436,14 +445,15 @@ func (a *App) analyze(ctx context.Context, p storedProfile, prov ai.Provider, b 
 	}
 	res := ai.Resolve(an, b.pm)
 	a.applyOpinions(res)
-	rep := &AIReportDTO{Markdown: an.ReportMarkdown, Items: make([]AIItemDTO, 0, len(res)), CreatedAt: a.deps.Now()}
+	rep := &AIReportDTO{Markdown: an.ReportMarkdown, Items: make([]AIItemDTO, 0, len(res)), CreatedAt: a.deps.Now(),
+		Profile: p.Name, Model: p.Model}
 	for _, r := range res {
 		rep.Items = append(rep.Items, AIItemDTO{Path: r.RealPath, Verdict: string(r.Verdict), Reason: r.Reason, Confidence: r.Confidence})
 	}
 	a.aiMu.Lock()
 	a.lastReport = rep
 	a.aiMu.Unlock()
-	return rep, nil
+	return a.reportView(rep), nil
 }
 
 // applyOpinions replaces the AI opinions of every session (copy-on-write).
@@ -478,6 +488,27 @@ func (a *App) waitAI() { a.aiWG.Wait() }
 // GetAIReport devolve o último relatório da sessão (nil se ainda não houve).
 func (a *App) GetAIReport() (*AIReportDTO, error) {
 	a.aiMu.Lock()
-	defer a.aiMu.Unlock()
-	return a.lastReport, nil
+	rep := a.lastReport
+	a.aiMu.Unlock()
+	return a.reportView(rep), nil
+}
+
+// reportView copies rep with each item's current node data from the
+// sessions, so the report reflects cleanings done after the analysis.
+func (a *App) reportView(rep *AIReportDTO) *AIReportDTO {
+	if rep == nil {
+		return nil
+	}
+	out := *rep
+	out.Items = make([]AIItemDTO, 0, len(rep.Items))
+	for _, it := range rep.Items {
+		it.Found, it.Node, it.Selectable = false, nil, false
+		if s, id, ok := a.locate(it.Path); ok && id != s.tree.Root {
+			d := a.nodeDTO(s, id)
+			it.Found, it.Node = true, &d
+			it.Selectable = d.Verdict != string(rules.Keep) && d.Action != string(rules.ActionManual) && !underLink(s.tree, id)
+		}
+		out.Items = append(out.Items, it)
+	}
+	return &out
 }
