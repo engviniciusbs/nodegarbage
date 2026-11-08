@@ -45,13 +45,13 @@
   <EmptyState title={strings.history.emptyTitle} description={strings.history.emptyBody} icon="history" />
 {:else}
   <div class="flex flex-col gap-4">
-    <div class="glass rounded-lg p-4">
+    <div class="rounded-md border border-stroke bg-card p-4">
       <p class="text-xs text-muted">{strings.history.totalFreed}</p>
-      <p class="text-2xl font-semibold tabular-nums text-primary">{formatBytes(data.totalFreed)}</p>
+      <p class="font-display text-2xl font-semibold tabular-nums text-primary">{formatBytes(data.totalFreed)}</p>
     </div>
-    <div class="glass overflow-auto rounded-lg">
+    <div class="overflow-auto rounded-md border border-stroke bg-card">
       <table class="w-full text-left text-sm text-primary" aria-label={strings.history.tableLabel}>
-        <thead class="text-xs text-muted">
+        <thead class="text-[11px] tracking-[.04em] text-muted uppercase">
           <tr>
             <th scope="col" class="px-3 py-2 font-medium">{strings.history.path}</th>
             <th scope="col" class="px-3 py-2 font-medium">{strings.history.size}</th>
@@ -62,7 +62,7 @@
         </thead>
         <tbody>
           {#each data.items as it, i (it.path + i)}
-            <tr class="border-t border-glass-border align-top">
+            <tr class="border-t border-stroke-soft align-top">
               <td class="break-all px-3 py-2 font-mono text-xs">{it.path}</td>
               <td class="px-3 py-2 tabular-nums">{formatBytes(it.size)}</td>
               <td class="px-3 py-2">{modeText(it.mode)}</td>

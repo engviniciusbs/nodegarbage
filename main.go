@@ -128,11 +128,14 @@ func main() {
 		},
 	})
 
-	// Mica needs Windows 11 (build >= 22000). On Windows 10 fall back to a solid
-	// #F0F0F0 window (no backdrop, opaque background).
-	backdrop, bgAlpha := windows.Mica, uint8(0)
+	// The UI is light-only: force the light theme so a dark Windows never turns
+	// the Mica backdrop (or the title bar) dark under dark text.
+	// Mica needs Windows 11 (build >= 22000). On Windows 10 fall back to a solid,
+	// opaque #F0F0F0 window (no backdrop, no translucency); the frontend paints
+	// its page with --surface there too.
+	backdrop, bgAlpha, translucent := windows.Mica, uint8(0), true
 	if isWindows10() {
-		backdrop, bgAlpha = windows.None, 255
+		backdrop, bgAlpha, translucent = windows.None, 255, false
 	}
 
 	err = wails.Run(&options.App{
@@ -146,9 +149,10 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 240, G: 240, B: 240, A: bgAlpha},
 		Windows: &windows.Options{
-			WebviewIsTransparent: true,
-			WindowIsTranslucent:  true,
+			WebviewIsTransparent: translucent,
+			WindowIsTranslucent:  translucent,
 			BackdropType:         backdrop,
+			Theme:                windows.Light,
 		},
 		OnStartup: func(ctx context.Context) {
 			em.ctx.Store(&ctx)

@@ -30,7 +30,7 @@
     {#snippet action()}<Button onclick={back}>{strings.scan.back}</Button>{/snippet}
   </EmptyState>
 {:else}
-  <div class="space-y-3">
+  <div class="max-w-[960px] space-y-3">
     <!-- Polite live region: updated once per progress event (backend throttles to <=10/s). -->
     <div aria-live="polite" aria-label={strings.scan.queueLabel} class="space-y-3">
       {#each scanState.queue as root (root)}

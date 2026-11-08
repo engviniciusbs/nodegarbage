@@ -13,10 +13,10 @@
     <span class="text-muted">{strings.ai.tokens(formatCount(preview.tokens))}</span>
     <span class="text-muted">{strings.ai.providerModel(preview.provider, preview.model)}</span>
     {#if preview.cached}
-      <span class="rounded-sm bg-black/5 px-2 py-0.5 text-xs font-medium text-primary">{strings.ai.cached}</span>
+      <span class="rounded-sm bg-well px-2 py-0.5 text-xs font-medium text-primary">{strings.ai.cached}</span>
     {/if}
   </div>
   <p class="mb-2 text-xs text-muted">{strings.ai.previewNote}</p>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <pre class="max-h-72 overflow-auto rounded-md bg-black/5 p-3 font-mono text-xs whitespace-pre-wrap break-all text-primary" tabindex="0">{preview.json}</pre>
+  <pre class="max-h-72 overflow-auto rounded-sm border border-stroke bg-field p-3 font-mono text-xs whitespace-pre-wrap break-all text-primary" tabindex="0">{preview.json}</pre>
 </Panel>

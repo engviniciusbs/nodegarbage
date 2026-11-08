@@ -1,45 +1,123 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-/* Map tokens to Tailwind utilities (bg-surface, text-primary, text-accent, rounded-md, ...). */
+/* Map tokens to Tailwind utilities (bg-card, border-stroke, text-primary, text-accent, rounded-md, ...). */
 @theme inline {
   --color-surface: var(--surface);
-  --color-glass: var(--glass);
-  --color-glass-border: var(--glass-border);
+  --color-mica: var(--mica);
+  --color-layer: var(--layer);
+  --color-card: var(--card);
+  --color-field: var(--field);
+  --color-footer: var(--footer);
+  --color-stroke: var(--stroke);
+  --color-stroke-soft: var(--stroke-soft);
+  --color-hover: var(--hover);
+  --color-hover-soft: var(--hover-soft);
+  --color-well: var(--well);
+  --color-nav-active: var(--nav-active);
+  --color-chip: var(--chip);
+  --color-backdrop: var(--backdrop);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-accent-tint: var(--accent-tint);
+  --color-accent-focus: var(--accent-focus);
+  --color-on-accent: var(--on-accent);
   --color-warn: var(--warn);
   --color-warn-text: var(--warn-text);
   --color-safe: var(--safe);
   --color-keep: var(--keep);
+  --color-tint-safe: var(--tint-safe);
+  --color-tint-caution: var(--tint-caution);
+  --color-tint-keep: var(--tint-keep);
+  --color-unknown-border: var(--unknown-border);
+  --color-inactive-border: var(--inactive-border);
+  --color-tile-safe: var(--tile-safe);
+  --color-tile-caution: var(--tile-caution);
+  --color-tile-keep: var(--tile-keep);
+  --color-tile-unknown: var(--tile-unknown);
+  --color-tile-gap: var(--tile-gap);
   --color-primary: var(--text-primary);
   --color-muted: var(--text-muted);
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
-  --font-sans: "Segoe UI Variable", "Segoe UI", sans-serif;
-  --font-mono: "Cascadia Mono", Consolas, monospace;
+  --radius-layer: var(--radius-layer);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-dialog: var(--shadow-dialog);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
 }
 
-html,
-body,
-#app {
-  height: 100%;
+/* Element defaults live in the base layer so Tailwind utilities can override them. */
+@layer base {
+  html,
+  body,
+  #app {
+    height: 100%;
+  }
+
+  /* The page is painted with a near-opaque light tint over the (forced light) Mica
+     backdrop, so text never depends on what is behind the window. On Windows 10
+     (no Mica) main.go makes the window opaque and lib/platform.ts adds .solid. */
+  html,
+  body {
+    margin: 0;
+    background: var(--mica);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+  }
+
+  html.solid,
+  html.solid body {
+    background: var(--surface);
+  }
+
+  /* Thin, subtle scrollbars on every internal scroll area. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar) transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--accent);
+  }
+
+  input[type="checkbox"]:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
 }
 
-/* Transparent so the Mica backdrop shows through; on Windows 10 the native
-   window is painted solid #F0F0F0 by main.go instead. */
-html,
-body {
-  margin: 0;
-  background: transparent;
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-variant-numeric: tabular-nums;
-  overflow: hidden;
-}
+@layer components {
+  /* Results list: shared grid for the header row and the virtualized rows.
+     The files column is dropped when the list panel gets narrow (1024 px window). */
+  .list-panel {
+    container-type: inline-size;
+  }
 
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  .list-grid {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) 96px 84px 132px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+  }
+
+  @container (max-width: 520px) {
+    .list-grid {
+      grid-template-columns: 28px minmax(0, 1fr) 88px 128px;
+    }
+    .list-grid > .col-files {
+      display: none;
+    }
+  }
 }

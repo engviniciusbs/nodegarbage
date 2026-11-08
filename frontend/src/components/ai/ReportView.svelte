@@ -24,7 +24,7 @@
     <h3 class="mb-2 text-sm font-semibold text-primary">{strings.ai.itemsTitle}</h3>
     <ul class="flex flex-col gap-2">
       {#each report.items as item (item.path)}
-        <li class="glass flex flex-col gap-1 rounded-md px-3 py-2">
+        <li class="flex flex-col gap-1 rounded-md border border-stroke bg-card px-3 py-2">
           <div class="flex flex-wrap items-center gap-2">
             <VerdictBadge verdict={verdict(item.verdict)} source="ai" />
             <button
@@ -68,8 +68,8 @@
   }
   .prose-report :global(pre) { overflow: auto; padding: 0.6em; border-radius: var(--radius-md); background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
   .prose-report :global(pre code) { background: none; padding: 0; }
-  .prose-report :global(blockquote) { border-left: 3px solid var(--glass-border); padding-left: 0.8em; color: var(--text-muted); }
+  .prose-report :global(blockquote) { border-left: 3px solid var(--stroke); padding-left: 0.8em; color: var(--text-muted); }
   .prose-report :global(table) { border-collapse: collapse; }
   .prose-report :global(th),
-  .prose-report :global(td) { border: 1px solid var(--glass-border); padding: 0.25em 0.6em; }
+  .prose-report :global(td) { border: 1px solid var(--stroke); padding: 0.25em 0.6em; }
 </style>

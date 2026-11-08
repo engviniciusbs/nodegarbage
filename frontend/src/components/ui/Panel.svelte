@@ -8,6 +8,7 @@
   let { children, class: extra = '', ...rest }: Props = $props()
 </script>
 
-<div class="glass rounded-lg p-4 {extra}" {...rest}>
+<!-- A card inside the content layer: near-opaque white, 1px stroke (no glass). -->
+<div class="rounded-md border border-stroke bg-card p-4 {extra}" {...rest}>
   {@render children()}
 </div>

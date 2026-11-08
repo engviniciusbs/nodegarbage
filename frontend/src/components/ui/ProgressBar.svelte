@@ -16,7 +16,7 @@
 </script>
 
 <div
-  class="relative h-2 w-full overflow-hidden rounded-sm bg-black/10"
+  class="relative h-2 w-full overflow-hidden rounded-sm bg-stroke"
   role="progressbar"
   aria-label={label}
   aria-valuemin="0"

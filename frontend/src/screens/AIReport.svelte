@@ -40,7 +40,7 @@
       <label class="flex flex-col gap-1 text-sm text-primary">
         {strings.ai.profile}
         <select
-          class="rounded-md border border-glass-border bg-white/70 px-3 py-2 text-sm text-primary"
+          class="rounded-sm border border-stroke bg-field px-3 py-1.5 text-[13px] text-primary"
           value={ai.profileId}
           disabled={ai.running}
           onchange={(e) => selectProfile(e.currentTarget.value)}

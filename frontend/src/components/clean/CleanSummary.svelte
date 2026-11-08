@@ -21,7 +21,7 @@
 <div class="flex flex-col gap-3">
   <div>
     <p class="text-xs text-muted">{strings.clean.freed}</p>
-    <p class="text-2xl font-semibold tabular-nums text-primary">{formatBytes(clean.summary?.freed ?? 0)}</p>
+    <p class="font-display text-2xl font-semibold tabular-nums text-primary">{formatBytes(clean.summary?.freed ?? 0)}</p>
   </div>
   <ul class="flex flex-wrap gap-4 text-sm text-primary">
     <li>{strings.clean.okCount(count('ok'))}</li>
@@ -36,7 +36,7 @@
       <h3 class="text-sm font-semibold text-primary">{strings.clean.problemsTitle}</h3>
       <ul class="flex max-h-48 flex-col gap-1 overflow-auto">
         {#each problems as r, i (r.path + i)}
-          <li class="rounded-md bg-black/5 px-3 py-2 text-sm">
+          <li class="rounded-sm bg-well px-3 py-2 text-sm">
             <span class="flex items-center gap-2 text-primary">
               <span class="text-warn-text"><Icon name={r.status === 'error' ? 'denied' : 'caution'} size={14} /></span>
               <span class="font-medium">{label(r)}</span>
@@ -52,7 +52,7 @@
     <button
       bind:this={closeBtn}
       type="button"
-      class="inline-flex cursor-pointer items-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+      class="inline-flex cursor-pointer items-center rounded-sm border border-accent bg-accent px-3 py-1.5 text-[13px] font-semibold text-on-accent hover:border-accent-hover hover:bg-accent-hover"
       onclick={onClose}>{strings.clean.close}</button
     >
   </div>

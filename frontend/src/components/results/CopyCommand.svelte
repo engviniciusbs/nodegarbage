@@ -21,9 +21,11 @@
   onDestroy(() => clearTimeout(timer))
 </script>
 
-<div class="flex items-start gap-2">
-  <code class="min-w-0 flex-1 rounded-sm bg-black/5 px-2 py-1 font-mono text-xs break-all select-text">{command}</code>
-  <Button variant="ghost" class="shrink-0 !px-2 !py-1 text-xs" onclick={copy}>{strings.results.copy}</Button>
+<div class="flex flex-col gap-1">
+  <div class="flex items-center gap-2 rounded-sm border border-stroke bg-field py-1.5 pr-1.5 pl-2.5">
+    <code class="min-w-0 flex-1 overflow-x-auto font-mono text-xs whitespace-nowrap select-text">{command}</code>
+    <Button class="shrink-0" onclick={copy}>{strings.results.copy}</Button>
+  </div>
   <span class="text-xs text-muted" role="status">
     {#if state === 'copied'}{strings.results.copied}{:else if state === 'error'}{strings.results.copyError}{/if}
   </span>

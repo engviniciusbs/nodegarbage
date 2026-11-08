@@ -4,8 +4,6 @@ import userEvent from '@testing-library/user-event'
 
 vi.mock('$lib/api', () => ({
   ListVolumes: vi.fn(),
-  IsElevated: vi.fn(),
-  RestartElevated: vi.fn(),
   StartScan: vi.fn(),
   CancelScan: vi.fn(),
   on: vi.fn(() => () => {}),
@@ -29,7 +27,6 @@ beforeEach(() => {
   resetScan()
   route.current = 'home'
   m.ListVolumes.mockResolvedValue(vols as never)
-  m.IsElevated.mockResolvedValue(true)
   m.StartScan.mockResolvedValue(undefined)
 })
 
@@ -64,29 +61,6 @@ describe('Home', () => {
     await userEvent.click(btn)
     expect(m.StartScan).toHaveBeenCalledWith(['C:\\'])
     expect(route.current).toBe('scan')
-  })
-
-  it('shows the admin banner when not elevated and restarts on click', async () => {
-    m.IsElevated.mockResolvedValue(false)
-    m.RestartElevated.mockResolvedValue(undefined)
-    render(Home)
-    const b = await screen.findByRole('button', { name: strings.home.adminRestart })
-    await userEvent.click(b)
-    expect(m.RestartElevated).toHaveBeenCalled()
-  })
-
-  it('hides the admin banner when elevated', async () => {
-    render(Home)
-    await screen.findByText('Windows')
-    expect(screen.queryByRole('button', { name: strings.home.adminRestart })).toBeNull()
-  })
-
-  it('shows an inline error when RestartElevated rejects', async () => {
-    m.IsElevated.mockResolvedValue(false)
-    m.RestartElevated.mockRejectedValue(new Error('uac negado'))
-    render(Home)
-    await userEvent.click(await screen.findByRole('button', { name: strings.home.adminRestart }))
-    expect(await screen.findByText(/uac negado/)).toBeInTheDocument()
   })
 
   it('shows ErrorState with retry when ListVolumes fails', async () => {

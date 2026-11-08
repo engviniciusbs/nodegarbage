@@ -42,7 +42,7 @@
   {:else}
     <ul aria-label={strings.profile.listLabel} class="flex flex-col gap-2">
       {#each profiles as p (p.id)}
-        <li class="glass flex items-center justify-between gap-3 rounded-md px-3 py-2">
+        <li class="flex items-center justify-between gap-3 rounded-sm border border-stroke bg-field px-3 py-2">
           <span class="min-w-0 text-sm text-primary">
             <span class="font-medium">{p.name}</span>
             <span class="text-muted"> · {p.model}</span>

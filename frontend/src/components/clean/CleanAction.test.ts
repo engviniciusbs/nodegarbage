@@ -19,7 +19,7 @@ beforeEach(() => {
 describe('CleanAction', () => {
   it('is disabled with an empty selection and never plans', () => {
     render(CleanAction)
-    expect(screen.getByRole('button', { name: strings.clean.button(0) })).toBeDisabled()
+    expect(screen.getByRole('button', { name: strings.clean.button(0, '0 B') })).toBeDisabled()
     expect(api.PlanClean).not.toHaveBeenCalled()
   })
 
@@ -27,7 +27,7 @@ describe('CleanAction', () => {
     toggle(node({ id: 1 }))
     vi.mocked(api.PlanClean).mockResolvedValue({ id: 'p', mode: 'recycle', token: 't', items: [], refused: [], totalBytes: 0, expiresAt: '' } as never)
     render(CleanAction)
-    const btn = screen.getByRole('button', { name: strings.clean.button(1) })
+    const btn = screen.getByRole('button', { name: strings.clean.button(1, '1,0 MB') })
     await userEvent.click(btn)
     await waitFor(() => expect(api.PlanClean).toHaveBeenCalledWith(['C:\\data\\item-1'], 'recycle'))
     await userEvent.keyboard('{Tab}')
@@ -42,7 +42,7 @@ describe('CleanAction while cleaning', () => {
     toggle(node({ id: 1 }))
     clean.phase = 'executing'
     render(CleanAction)
-    expect(screen.getByRole('button', { name: strings.clean.button(1) })).toBeDisabled()
+    expect(screen.getByRole('button', { name: strings.clean.button(1, '1,0 MB') })).toBeDisabled()
     clean.phase = 'planning'
   })
 })

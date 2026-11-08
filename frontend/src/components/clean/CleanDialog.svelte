@@ -48,16 +48,16 @@
   aria-labelledby="clean-title"
   oncancel={onCancel}
   onclose={onNativeClose}
-  class="glass m-auto w-[min(40rem,calc(100vw-2rem))] rounded-lg bg-surface p-5 text-primary backdrop:bg-black/40"
+  class="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-lg border border-stroke bg-surface p-5 text-primary shadow-dialog backdrop:bg-backdrop"
 >
   <div class="mb-3 flex items-center justify-between gap-3">
-    <h2 id="clean-title" class="text-lg font-semibold text-primary">
+    <h2 id="clean-title" class="font-display text-xl font-semibold text-primary">
       {clean.phase === 'done' ? strings.clean.doneTitle : strings.clean.title}
     </h2>
     {#if clean.phase === 'planning' || clean.phase === 'review'}
       <button
         type="button"
-        class="cursor-pointer rounded-md p-1 text-primary hover:bg-black/5"
+        class="cursor-pointer rounded-sm p-1 text-primary hover:bg-hover"
         aria-label={strings.clean.close}
         onclick={onClose}><Icon name="denied" size={18} /></button
       >

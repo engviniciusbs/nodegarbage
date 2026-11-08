@@ -11,7 +11,7 @@
   import { strings } from '$lib/strings'
 
   const MB = 1024 * 1024
-  const field = 'w-40 rounded-md border border-glass-border bg-white/70 px-3 py-2 text-sm text-primary'
+  const field = 'w-40 rounded-sm border border-stroke bg-field px-3 py-1.5 text-[13px] text-primary'
 
   let loaded = $state<SettingsDTO | null>(null)
   let loading = $state(true)
@@ -64,7 +64,7 @@
   }
 </script>
 
-<div class="flex flex-col gap-4">
+<div class="flex max-w-[960px] flex-col gap-4">
   <Panel>
     <h2 class="mb-3 text-base font-semibold text-primary">{strings.settings.aiTitle}</h2>
     <ProfileList />
@@ -98,7 +98,7 @@
         </label>
         <label class="flex flex-col gap-1 text-sm text-primary">
           {strings.settings.userRulesDir}
-          <input class="w-full rounded-md border border-glass-border bg-black/5 px-3 py-2 font-mono text-xs text-primary" readonly value={loaded.userRulesDir} />
+          <input class="w-full rounded-sm border border-stroke bg-well px-3 py-1.5 font-mono text-xs text-primary" readonly value={loaded.userRulesDir} />
           <span class="text-xs text-muted">{strings.settings.restartNote}</span>
         </label>
       </Panel>

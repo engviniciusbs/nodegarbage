@@ -2,37 +2,38 @@
  * Design tokens (spec §8). Components never use hex directly: only these
  * custom properties (directly or through the Tailwind @theme mapping in app.css).
  *
- * CONTRAST NOTES (WCAG 2.1 AA: 4.5:1 normal text, 3:1 large text / UI / icons).
- * Ratios were computed against the solid surface and against the glass panel
- * (white @55% over the surface, i.e. ~#F8F8F8; over a darker Mica wallpaper
- * the glass can fall to ~#D2D2D2, so margins below matter).
+ * LIGHT ONLY. main.go forces the light window theme (so Mica stays light even
+ * when Windows is in dark mode) and the page itself is painted with --mica
+ * (Windows 11) or --surface (Windows 10), so text never depends on what is
+ * behind the window. Panels are near-opaque white (--layer, --card): there is
+ * no translucent "glass" under text any more.
  *
- *   token            on surface #F0F0F0   on glass (light)   on glass (dark wallpaper)
- *   --text-primary         ~15:1               16.7              11.8
- *   --text-muted            7.0                 7.5               5.3
- *   --accent                4.65                5.0               3.5   <- interactive only
- *   --accent-hover          6.5                 7.0               4.9
- *   --safe                  5.22                5.6               3.9
- *   --keep                  5.4                 5.8               4.1   <- icon/tint only
- *   --warn-text             5.28                5.7               4.0
- *   white on --accent 5.3 ; white on --accent-hover 7.4 ; --text-primary on --warn 7.25
+ * CONTRAST NOTES (WCAG 2.1 AA: 4.5:1 normal text, 3:1 large text / UI / icons).
+ * Computed for the composited colours. "dark behind" assumes a near-black
+ * backdrop under --mica (should never happen with the forced light theme).
+ *
+ *   token            card    layer   mica   | dark behind: card  layer  mica
+ *   --text-primary   17.7    17.1    16.0   |              17.4   15.5   12.3
+ *   --text-muted      7.9     7.6     7.2   |               7.8    6.9    5.5
+ *   --accent          5.3     5.1     4.8   |               5.2    4.6    3.7  <- interactive only
+ *   --safe            5.9     5.7     5.4   |               5.8    5.2    4.1
+ *   --warn-text       6.0     5.8     5.4   |               5.9    5.3    4.2
+ *   --keep            6.1     5.9     5.5   |               6.0    5.4    4.2
+ *   verdict colour on its badge tint (over card): safe 5.1, caution 5.2, keep 5.2
+ *   --text-muted on the lightest-strongest tile (--tile-caution) 5.9
+ *   white on --accent 5.3 ; white on --accent-hover 7.4
  *
  * Rules that follow:
  *  - Body copy, labels, table cells: --text-primary (or --text-muted for helper text).
- *  - --accent is for interactive elements (buttons, links, focus ring, selection),
- *    never for long running text, because it drops below 4.5:1 on a dark-ish glass.
- *  - Verdict colours (--safe, --keep, --warn) colour the icon and a tinted
- *    background only; the verdict label is always --text-primary. State is never
- *    conveyed by colour alone (icon + label).
- *  - --warn is fill/icon only (text over it is --text-primary).
- *  - --safe and --warn-text (R17: darkened to #137336 / #9A4F00) pass 4.5:1 as text on the
- *    solid surface and on light glass; on a dark-wallpaper glass they fall to ~4.0, so
- *    prefer --text-primary for text over glass and keep these for icons/tints there.
+ *  - --accent is for interactive elements (buttons, links, focus ring, selection).
+ *  - Verdicts are never conveyed by colour alone: icon + label, always.
+ *  - --warn is fill/icon only (text uses --warn-text).
  */
 :root {
+  color-scheme: light;
+
+  /* Base palette (names kept from v0.1). */
   --surface: #f0f0f0;
-  --glass: rgba(255, 255, 255, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.6);
   --accent: #105bff;
   --accent-hover: #0a47d1;
   --warn: #fe8500;
@@ -41,27 +42,54 @@
   --keep: #5b6270;
   --text-primary: #16181d;
   --text-muted: #4b5160;
+  --on-accent: #ffffff;
+
+  /* Window and layers (Win11 NavigationView look). */
+  --mica: rgba(243, 243, 243, 0.86); /* page tint over the (forced light) Mica backdrop */
+  --layer: rgba(255, 255, 255, 0.62); /* content area to the right of the nav */
+  --card: rgba(255, 255, 255, 0.86); /* panels inside the layer */
+  --field: #ffffff; /* inputs, code boxes, secondary buttons, selected segment */
+  --footer: rgba(255, 255, 255, 0.82);
+  --stroke: rgba(0, 0, 0, 0.08);
+  --stroke-soft: rgba(0, 0, 0, 0.05);
+  --hover: rgba(0, 0, 0, 0.04);
+  --hover-soft: rgba(0, 0, 0, 0.025);
+  --well: rgba(0, 0, 0, 0.025); /* stat tiles, AI opinion block */
+  --nav-active: rgba(255, 255, 255, 0.75);
+  --chip: rgba(255, 255, 255, 0.7);
+  --backdrop: rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-dialog: 0 24px 60px rgba(20, 30, 60, 0.28), 0 2px 6px rgba(20, 30, 60, 0.12);
+
+  /* Selection / focus. */
+  --accent-tint: rgba(16, 91, 255, 0.08); /* selected row */
+  --accent-focus: rgba(16, 91, 255, 0.05); /* focused row */
+
+  /* Verdict badges. */
+  --tint-safe: rgba(19, 115, 54, 0.1);
+  --tint-caution: rgba(254, 133, 0, 0.16);
+  --tint-keep: rgba(91, 98, 112, 0.12);
+  --unknown-border: rgba(75, 81, 96, 0.35);
+  --inactive-border: rgba(254, 133, 0, 0.4);
+
+  /* Treemap tiles (read by Treemap.svelte via getComputedStyle). */
+  --tile-safe: rgba(19, 115, 54, 0.22);
+  --tile-caution: rgba(254, 133, 0, 0.32);
+  --tile-keep: rgba(91, 98, 112, 0.2);
+  --tile-unknown: rgba(16, 91, 255, 0.14);
+  --tile-gap: rgba(255, 255, 255, 0.9);
+
+  /* Scrollbars. */
+  --scrollbar: rgba(0, 0, 0, 0.25);
 
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
-  --blur: 20px;
+  --radius-layer: 8px;
 
-  --font-sans: "Segoe UI Variable", "Segoe UI", sans-serif;
-  --font-mono: "Cascadia Mono", Consolas, monospace;
-}
-
-.glass {
-  background: var(--glass);
-  backdrop-filter: blur(var(--blur));
-  -webkit-backdrop-filter: blur(var(--blur));
-  border: 1px solid var(--glass-border);
-}
-
-@supports not (backdrop-filter: blur(1px)) {
-  .glass {
-    background: var(--surface);
-  }
+  --font-sans: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
 }
 
 @media (prefers-reduced-motion: reduce) {

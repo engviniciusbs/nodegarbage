@@ -9,11 +9,11 @@
   let { variant = 'secondary', type = 'button', children, class: extra = '', ...rest }: Props = $props()
 
   const base =
-    'inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer'
+    'inline-flex items-center justify-center gap-2 rounded-sm border px-3 py-1.5 text-[13px] transition-colors disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer'
   const variants = {
-    primary: 'bg-accent text-white hover:bg-accent-hover',
-    secondary: 'glass text-primary hover:bg-white/80',
-    ghost: 'text-primary hover:bg-black/5',
+    primary: 'border-accent bg-accent font-semibold text-on-accent enabled:hover:bg-accent-hover enabled:hover:border-accent-hover',
+    secondary: 'border-stroke bg-field text-primary enabled:hover:bg-hover',
+    ghost: 'border-transparent bg-transparent text-primary enabled:hover:bg-hover',
   }
 </script>
 
