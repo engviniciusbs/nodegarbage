@@ -83,6 +83,14 @@ export const strings = {
     emptyFolder: 'Esta pasta está vazia',
     emptyFiltered: 'Nenhum item nesta categoria',
     clearFilter: 'Limpar filtro',
+    nodeModules: 'node_modules',
+    filterSummary: (label: string, n: number, size: string) =>
+      `Filtro: ${label} · ${n === 1 ? '1 item' : `${n.toLocaleString('pt-BR')} itens`} · ${size}`,
+    filterRegion: 'Filtro ativo',
+    truncated: 'mostrando os 5.000 maiores',
+    colLocation: 'Local',
+    filteredListLabel: (label: string) => `Itens do filtro ${label}`,
+    locateError: 'Não foi possível abrir a pasta deste item.',
     summaryLabel: 'Resumo',
     safeLabel: 'recuperáveis com segurança',
     cautionLabel: 'exigem cuidado',
@@ -106,6 +114,7 @@ export const strings = {
     root: 'Raiz',
     listLabel: 'Itens da pasta atual',
     select: (name: string) => `Selecionar ${name}`,
+    selectAt: (name: string, location: string) => `Selecionar ${name} em ${location}`,
     blocked: {
       keep: 'Protegido por regra: não pode ser apagado.',
       manual: 'Exige um comando manual: não é apagado pelo app.',

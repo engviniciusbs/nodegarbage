@@ -7,7 +7,24 @@
   import { ROW_HEIGHT, visibleRange } from '$lib/virtual'
   import { strings } from '$lib/strings'
 
-  let { items, focusedId = $bindable(null) }: { items: NodeDTO[]; focusedId?: number | null } = $props()
+  let {
+    items,
+    focusedId = $bindable(null),
+    located = false,
+    label = strings.results.listLabel,
+    onenter,
+    onup,
+  }: {
+    items: NodeDTO[]
+    focusedId?: number | null
+    /** Filtered view: rows show their Local column. */
+    located?: boolean
+    label?: string
+    /** Replaces the default Enter / double-click (drill into the folder). */
+    onenter?: (n: NodeDTO) => void
+    /** Replaces the default Backspace / Alt+Up (parent folder). */
+    onup?: () => void
+  } = $props()
 
   let el: HTMLDivElement | undefined = $state()
   let scrollTop = $state(0)
@@ -54,7 +71,14 @@
   })
 
   function up() {
-    if (results.path.length) goUp(results.path.length - 1)
+    if (onup) onup()
+    else if (results.path.length) goUp(results.path.length - 1)
+  }
+
+  function enter(n: NodeDTO | undefined) {
+    if (!n) return
+    if (onenter) onenter(n)
+    else if (n.hasChildren) openNode(n.id)
   }
 
   function onkeydown(e: KeyboardEvent) {
@@ -69,9 +93,7 @@
       PageUp: () => moveTo(focusedIndex - page),
       Home: () => moveTo(0),
       End: () => moveTo(items.length - 1),
-      Enter: () => {
-        if (cur?.hasChildren) openNode(cur.id)
-      },
+      Enter: () => enter(cur),
       ' ': () => {
         if (cur) toggle(cur)
       },
@@ -88,7 +110,7 @@
 <div
   bind:this={el}
   role="tree"
-  aria-label={strings.results.listLabel}
+  aria-label={label}
   tabindex={focusedRendered ? -1 : 0}
   class="relative min-h-0 flex-1 overflow-y-auto focus-visible:-outline-offset-2"
   onscroll={() => (scrollTop = el?.scrollTop ?? 0)}
@@ -105,7 +127,8 @@
         hovered={results.hoverId === n.id}
         ontoggle={() => toggle(n)}
         onfocus={() => (focusedId = n.id)}
-        onopen={() => n.hasChildren && openNode(n.id)}
+        {located}
+        onopen={() => enter(n)}
       />
     {/each}
   </div>

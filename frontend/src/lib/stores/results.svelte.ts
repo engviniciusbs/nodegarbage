@@ -1,16 +1,27 @@
-import { GetChildren } from '$lib/api'
-import type { NodeDTO } from '$lib/api'
+import { GetChildren, ListFiltered, LocatePath } from '$lib/api'
+import type { FilterDTO, FilteredDTO, NodeDTO } from '$lib/api'
 import { strings } from '$lib/strings'
 import { clear } from './selection.svelte'
 
 export const ROOT_ID = -1
+/** Rule behind the fixed "node_modules" shortcut chip. */
+export const NODE_MODULES_RULE = 'node.node_modules'
+
+/** A volume-wide filter (exactly one of category / ruleId) and its display label. */
+export type ActiveFilter = { category: string; ruleId: string; label: string }
 
 export const results = $state({
   volume: '',
   currentId: ROOT_ID,
   path: [] as NodeDTO[],
   children: [] as NodeDTO[],
-  categoryFilter: null as string | null,
+  /** Volume-wide filter; while set, the list shows `filtered` instead of the current folder. */
+  filter: null as ActiveFilter | null,
+  filtered: null as FilteredDTO | null,
+  filterLoading: false,
+  filterError: '',
+  /** node_modules matches of the volume (null until loaded, or on error). */
+  shortcut: null as { count: number; totalBytes: number } | null,
   /** Row highlighted by pointer hover on the treemap; never moves DOM focus. */
   hoverId: null as number | null,
   /** One-shot request (e.g. treemap leaf click): the mounted TreeList scrolls to and focuses this row. */
@@ -45,9 +56,11 @@ export async function loadVolume(volume: string): Promise<void> {
   results.path = []
   results.currentId = ROOT_ID
   results.children = []
-  results.categoryFilter = null
+  resetFilter()
+  results.shortcut = null
   clear()
   if (!volume) return
+  void loadShortcut()
   const kids = await fetchChildren(ROOT_ID)
   if (kids) results.children = kids
 }
@@ -80,6 +93,8 @@ export async function goUp(index: number): Promise<void> {
 }
 
 export async function refresh(): Promise<void> {
+  if (results.filter) void fetchFiltered()
+  void loadShortcut()
   const kids = await fetchChildren(results.currentId)
   if (kids) results.children = kids
 }
@@ -98,13 +113,90 @@ export async function revealPath(volume: string, chain: NodeDTO[]): Promise<void
   if (!kids) return
   if (changed) clear()
   results.hoverId = null
-  results.categoryFilter = null
+  resetFilter()
   results.path = parent
   results.currentId = parent.length ? parent[parent.length - 1].id : ROOT_ID
   results.children = kids
   results.focusRequest = target.id
 }
 
-export function toggleCategory(category: string): void {
-  results.categoryFilter = results.categoryFilter === category ? null : category
+// ---- Volume-wide filtered view -------------------------------------------
+
+let filterSeq = 0
+const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+function resetFilter() {
+  filterSeq++
+  results.filter = null
+  results.filtered = null
+  results.filterLoading = false
+  results.filterError = ''
+}
+
+async function fetchFiltered(): Promise<void> {
+  const f = results.filter
+  if (!f) return
+  const mine = ++filterSeq
+  results.filterLoading = true
+  results.filterError = ''
+  try {
+    const dto: FilterDTO = { category: f.category, ruleId: f.ruleId }
+    const res = await ListFiltered(results.volume, dto)
+    if (mine === filterSeq) results.filtered = res
+  } catch (e) {
+    if (mine === filterSeq) results.filterError = `${strings.results.loadError} ${errText(e)}`
+  } finally {
+    if (mine === filterSeq) results.filterLoading = false
+  }
+}
+
+/** Shows the volume-wide matches of a category or rule; the same filter again turns it off. */
+export function toggleFilter(f: ActiveFilter): Promise<void> {
+  const cur = results.filter
+  if (cur && cur.category === f.category && cur.ruleId === f.ruleId) {
+    clearFilter()
+    return Promise.resolve()
+  }
+  results.filter = { ...f }
+  results.filtered = null
+  results.hoverId = null
+  return fetchFiltered()
+}
+
+/** Leaves the filtered view: the folder navigation underneath was never changed. */
+export function clearFilter(): void {
+  if (!results.filter) return
+  resetFilter()
+  results.hoverId = null
+  nav.pendingFocus = { id: null }
+}
+
+export function retryFilter(): Promise<void> {
+  return fetchFiltered()
+}
+
+/** Counts the node_modules of the volume for the shortcut chip. Silent on failure. */
+async function loadShortcut(): Promise<void> {
+  const volume = results.volume
+  if (!volume) return
+  try {
+    const res = await ListFiltered(volume, { category: '', ruleId: NODE_MODULES_RULE })
+    if (results.volume === volume) results.shortcut = { count: res.count, totalBytes: res.totalBytes }
+  } catch {
+    if (results.volume === volume) results.shortcut = null
+  }
+}
+
+/**
+ * Leaves the filtered view for the folder of a filtered item: its parent with
+ * the item focused, or (inside) the item's own folder.
+ */
+export async function openFiltered(n: NodeDTO, inside = false): Promise<void> {
+  try {
+    const loc = await LocatePath(n.path)
+    await revealPath(loc.volume, loc.chain)
+    if (inside && results.filter === null) await openNode(loc.chain[loc.chain.length - 1].id)
+  } catch (e) {
+    results.filterError = `${strings.results.locateError} ${errText(e)}`
+  }
 }

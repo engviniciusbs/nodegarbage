@@ -14,6 +14,7 @@
     focused,
     selected,
     hovered = false,
+    located = false,
     ontoggle,
     onfocus,
     onopen,
@@ -24,6 +25,8 @@
     focused: boolean
     selected: boolean
     hovered?: boolean
+    /** Filtered view: show the parent folder (Local) column. */
+    located?: boolean
     ontoggle: () => void
     onfocus: () => void
     onopen: () => void
@@ -55,6 +58,7 @@
   data-index={index}
   style="position:absolute;left:0;right:0;top:{index * ROW_HEIGHT}px;height:{ROW_HEIGHT}px"
   class="list-grid border-b border-stroke-soft text-[13px] text-primary outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent {tone}"
+  class:list-grid-located={located}
   onclick={onfocus}
   ondblclick={onopen}
 >
@@ -62,7 +66,7 @@
     type="checkbox"
     tabindex="-1"
     class="m-0 size-4"
-    aria-label={strings.results.select(node.name)}
+    aria-label={located ? strings.results.selectAt(node.name, node.location) : strings.results.select(node.name)}
     title={blocked ? strings.results.blocked[blocked] : undefined}
     disabled={blocked !== ''}
     checked={selected}
@@ -79,6 +83,9 @@
       <span class="shrink-0 rounded-full border border-inactive-border px-1.5 py-px text-[11px] whitespace-nowrap text-warn-text">{strings.results.inactive}</span>
     {/if}
   </span>
+  {#if located}
+    <span class="truncate font-mono text-xs text-muted" title={node.location}>{node.location}</span>
+  {/if}
   <span class="text-right font-semibold tabular-nums">{formatBytes(node.size)}</span>
   <span class="col-files text-right text-muted tabular-nums">{formatCount(node.files)}</span>
   <span class="flex min-w-0"><VerdictBadge {verdict} source={node.source} compact /></span>

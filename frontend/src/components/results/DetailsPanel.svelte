@@ -8,7 +8,8 @@
   import { results, openNode } from '$lib/stores/results.svelte'
   import { strings, type Verdict } from '$lib/strings'
 
-  let { node }: { node?: NodeDTO } = $props()
+  /** `onopen` replaces the default "Abrir pasta" (drill into a child of the current folder). */
+  let { node, onopen }: { node?: NodeDTO; onopen?: (n: NodeDTO) => void } = $props()
 
   const asVerdict = (v: string) => (v in strings.verdict ? v : 'unknown') as Verdict
   const pct = (c: number) => Math.round((c <= 1 ? c * 100 : c) * 10) / 10
@@ -79,7 +80,7 @@
       </section>
     {/if}
     {#if node.hasChildren}
-      <div><Button onclick={() => openNode(node.id)}>{strings.results.openFolder}</Button></div>
+      <div><Button onclick={() => (onopen ? onopen(node) : openNode(node.id))}>{strings.results.openFolder}</Button></div>
     {/if}
     {#if node.files > 0}
       <FileList volume={results.volume} id={node.id} />
