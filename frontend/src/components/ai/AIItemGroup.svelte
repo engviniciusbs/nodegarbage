@@ -1,8 +1,8 @@
 <script lang="ts">
   import Button from '../ui/Button.svelte'
   import AIItemRow from './AIItemRow.svelte'
-  import type { AIItemDTO, NodeDTO } from '$lib/api'
-  import { disabledReason, sumBytes, type AIGroupId } from '$lib/aireport'
+  import type { AIItemDTO } from '$lib/api'
+  import { bulkSelectable, sumBytes, type AIGroupId } from '$lib/aireport'
   import { formatBytes } from '$lib/format'
   import { selectAll } from '$lib/stores/selection.svelte'
   import { strings } from '$lib/strings'
@@ -10,7 +10,8 @@
   let { id, items }: { id: AIGroupId; items: AIItemDTO[] } = $props()
 
   const title = $derived(strings.ai.groups[id])
-  const selectable = $derived(items.filter((it) => disabledReason(it) === '').map((it) => it.node as NodeDTO))
+  // Items whose rule verdict is stricter than the AI one are never bulk-selected (still one by one).
+  const selectable = $derived(bulkSelectable(items))
   const tone: Record<AIGroupId, string> = { safe: 'text-safe', caution: 'text-warn-text', keep: 'text-keep' }
 </script>
 

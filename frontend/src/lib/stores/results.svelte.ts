@@ -20,6 +20,8 @@ export const results = $state({
   filtered: null as FilteredDTO | null,
   filterLoading: false,
   filterError: '',
+  /** Non-blocking problem in the filtered view (e.g. an item could not be opened); the list stays. */
+  filterNotice: '',
   /** node_modules matches of the volume (null until loaded, or on error). */
   shortcut: null as { count: number; totalBytes: number } | null,
   /** Row highlighted by pointer hover on the treemap; never moves DOM focus. */
@@ -57,6 +59,7 @@ export async function loadVolume(volume: string): Promise<void> {
   results.currentId = ROOT_ID
   results.children = []
   resetFilter()
+  shortcutSeq++
   results.shortcut = null
   clear()
   if (!volume) return
@@ -93,6 +96,8 @@ export async function goUp(index: number): Promise<void> {
 }
 
 export async function refresh(): Promise<void> {
+  // Nothing loaded (e.g. a cleaning started from the AI screen before Results was opened).
+  if (!results.volume) return
   if (results.filter) void fetchFiltered()
   void loadShortcut()
   const kids = await fetchChildren(results.currentId)
@@ -123,6 +128,7 @@ export async function revealPath(volume: string, chain: NodeDTO[]): Promise<void
 // ---- Volume-wide filtered view -------------------------------------------
 
 let filterSeq = 0
+let shortcutSeq = 0
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 function resetFilter() {
@@ -131,6 +137,7 @@ function resetFilter() {
   results.filtered = null
   results.filterLoading = false
   results.filterError = ''
+  results.filterNotice = ''
 }
 
 async function fetchFiltered(): Promise<void> {
@@ -159,6 +166,7 @@ export function toggleFilter(f: ActiveFilter): Promise<void> {
   }
   results.filter = { ...f }
   results.filtered = null
+  results.filterNotice = ''
   results.hoverId = null
   return fetchFiltered()
 }
@@ -179,11 +187,12 @@ export function retryFilter(): Promise<void> {
 async function loadShortcut(): Promise<void> {
   const volume = results.volume
   if (!volume) return
+  const mine = ++shortcutSeq
   try {
     const res = await ListFiltered(volume, { category: '', ruleId: NODE_MODULES_RULE })
-    if (results.volume === volume) results.shortcut = { count: res.count, totalBytes: res.totalBytes }
+    if (mine === shortcutSeq) results.shortcut = { count: res.count, totalBytes: res.totalBytes }
   } catch {
-    if (results.volume === volume) results.shortcut = null
+    if (mine === shortcutSeq) results.shortcut = null
   }
 }
 
@@ -192,11 +201,12 @@ async function loadShortcut(): Promise<void> {
  * the item focused, or (inside) the item's own folder.
  */
 export async function openFiltered(n: NodeDTO, inside = false): Promise<void> {
+  results.filterNotice = ''
   try {
     const loc = await LocatePath(n.path)
     await revealPath(loc.volume, loc.chain)
     if (inside && results.filter === null) await openNode(loc.chain[loc.chain.length - 1].id)
   } catch (e) {
-    results.filterError = `${strings.results.locateError} ${errText(e)}`
+    results.filterNotice = `${strings.results.locateError} ${errText(e)}`
   }
 }

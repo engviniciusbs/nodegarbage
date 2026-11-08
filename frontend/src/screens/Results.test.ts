@@ -261,4 +261,40 @@ describe('Results filtered view', () => {
     expect(container.querySelector('canvas')).not.toBeNull()
     expect(screen.getByText(strings.results.filterSummary('Artefatos de build', 2, formatBytes(4 * 1024 ** 3)))).toBeInTheDocument()
   })
+
+  it('rows show the project name over the tail-visible parent path, without the Arquivos column', async () => {
+    const dist = node({ id: 23, name: 'dist', path: 'C:\\b\\app\\dist', location: 'C:\\b\\app', size: 10, inactive: true })
+    m.ListFiltered.mockResolvedValue({ ...matches, items: [nm1, nm2, dist], count: 3 } as never)
+    const { container } = render(Results)
+    await screen.findAllByRole('treeitem')
+    await userEvent.click(await screen.findByRole('button', { name: /^Artefatos de build/ }))
+    await waitFor(() => expect(screen.getAllByRole('treeitem')).toHaveLength(3))
+    const rows = screen.getAllByRole('treeitem')
+    expect(within(rows[0]).getByText('a')).toHaveClass('font-semibold')
+    expect(within(rows[1]).getByText('web')).toBeInTheDocument()
+    expect(within(rows[2]).getByText(strings.results.itemIn('dist', 'app'))).toBeInTheDocument()
+    // line 2: the full parent path, truncated from the start (rtl box, ltr text)
+    const loc = within(rows[1]).getByTitle('C:\\b\\web')
+    expect(loc).toHaveAttribute('dir', 'rtl')
+    expect(loc.querySelector('bdi')).toHaveTextContent('C:\\b\\web')
+    // the inactive pill sits on line 1 next to the name
+    expect(within(rows[2]).getByText(strings.results.inactive).parentElement).toBe(
+      within(rows[2]).getByText(strings.results.itemIn('dist', 'app')).parentElement,
+    )
+    expect(container.querySelectorAll('[role="treeitem"] .col-files')).toHaveLength(0)
+    expect(screen.queryByText(strings.results.colName)).toBeNull()
+    expect(screen.getByRole('checkbox', { name: strings.results.selectAt('node_modules', 'C:\\a') })).toBeInTheDocument()
+  })
+
+  it('a failed Enter keeps the filtered list and shows an inline error', async () => {
+    m.LocatePath.mockRejectedValue(new Error('item não encontrado na última varredura'))
+    await enterFilter()
+    screen.getAllByRole('treeitem')[0].focus()
+    await userEvent.keyboard('{Enter}')
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(strings.results.locateError)
+    expect(results.filter).not.toBeNull()
+    expect(screen.getAllByRole('treeitem')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: strings.common.retry })).toBeNull()
+  })
 })

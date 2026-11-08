@@ -5,8 +5,12 @@
   import type { ActiveFilter } from '$lib/stores/results.svelte'
   import { strings } from '$lib/strings'
 
-  let { filter, filtered, onclear }: { filter: ActiveFilter; filtered: FilteredDTO | null; onclear: () => void } =
-    $props()
+  let {
+    filter,
+    filtered,
+    notice = '',
+    onclear,
+  }: { filter: ActiveFilter; filtered: FilteredDTO | null; notice?: string; onclear: () => void } = $props()
 </script>
 
 <!-- Takes the breadcrumb's place while a volume-wide filter is active. -->
@@ -29,4 +33,8 @@
     class="inline-flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted hover:bg-hover hover:text-primary"
     onclick={onclear}><Icon name="close" size={14} /></button
   >
+  {#if notice}
+    <!-- Non-blocking: the filtered list below stays as it was. -->
+    <p role="alert" class="m-0 basis-full text-xs text-warn-text">{notice}</p>
+  {/if}
 </div>

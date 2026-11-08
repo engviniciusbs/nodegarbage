@@ -19,6 +19,8 @@ export const strings = {
   source: {
     ai: 'sugerido pela IA',
     aiShort: 'IA',
+    rule: 'regra',
+    protected: 'proteção',
   },
   category: {
     'dev-cache': 'Cache de desenvolvimento',
@@ -89,6 +91,7 @@ export const strings = {
     filterRegion: 'Filtro ativo',
     truncated: 'mostrando os 5.000 maiores',
     colLocation: 'Local',
+    itemIn: (name: string, parent: string) => `${name} em ${parent}`,
     filteredListLabel: (label: string) => `Itens do filtro ${label}`,
     locateError: 'Não foi possível abrir a pasta deste item.',
     summaryLabel: 'Resumo',
@@ -191,6 +194,11 @@ export const strings = {
     selectAllSafe: "Selecionar todos de 'Pode apagar'",
     selectItem: (path: string) => `Selecionar ${path}`,
     notFound: 'não encontrado na última varredura',
+    missing: {
+      file: 'arquivo — selecione a pasta nos Resultados',
+      not_folder: 'não é uma pasta da última varredura',
+    } as Record<string, string>,
+    effective: 'Classificação efetiva (regra e IA)',
     notSelectable: 'Não pode ser selecionado para limpeza.',
     fullReport: 'Relatório completo',
   },

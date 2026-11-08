@@ -114,7 +114,7 @@
     {#if summary}<SummaryBar {summary} />{/if}
     <div class="flex shrink-0 items-center justify-between gap-3 px-6 pt-3.5 pb-2">
       {#if filter}
-        <FilterBar {filter} filtered={results.filtered} onclear={clearFilter} />
+        <FilterBar {filter} filtered={results.filtered} notice={results.filterNotice} onclear={clearFilter} />
       {:else}
         <Breadcrumb volume={results.volume} path={results.path} />
       {/if}

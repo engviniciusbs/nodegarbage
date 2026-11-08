@@ -1,4 +1,4 @@
-import type { AIItemDTO } from '$lib/api'
+import type { AIItemDTO, NodeDTO } from '$lib/api'
 import { blockedReason } from '$lib/stores/selection.svelte'
 import { strings } from '$lib/strings'
 
@@ -21,16 +21,29 @@ export const itemBytes = (it: AIItemDTO) => (it.found && it.node ? it.node.size 
 
 export const sumBytes = (items: AIItemDTO[]) => items.reduce((t, it) => t + itemBytes(it), 0)
 
+const RANK: Record<string, number> = { safe: 0, caution: 1, keep: 2 }
+
+/**
+ * The effective verdict (rules merged with the AI) when it is stricter than
+ * the AI's own, e.g. AI "safe" on a folder a rule marks "caution"; else ''.
+ */
+export function stricterVerdict(it: AIItemDTO): string {
+  const eff = it.found && it.node ? it.node.verdict : ''
+  if (!(eff in RANK)) return ''
+  return RANK[eff] > (RANK[it.verdict] ?? RANK.caution) ? eff : ''
+}
+
+/** What "Selecionar todos" may add: selectable items whose effective verdict is not stricter than the AI's. */
+export function bulkSelectable(items: AIItemDTO[]): NodeDTO[] {
+  return items.filter((it) => disabledReason(it) === '' && !stricterVerdict(it)).map((it) => it.node as NodeDTO)
+}
+
 /** Why the item's checkbox is disabled, or '' when it can be selected. */
 export function disabledReason(it: AIItemDTO): string {
-  if (!it.found || !it.node) return strings.ai.notFound
+  if (!it.found || !it.node) return strings.ai.missing[it.missing] ?? strings.ai.notFound
   const b = blockedReason(it.node)
   if (b) return strings.results.blocked[b]
   return it.selectable ? '' : strings.ai.notSelectable
 }
 
-/** Last path component, for the row title. */
-export function leafName(path: string): string {
-  const parts = path.split(/[\\/]/).filter(Boolean)
-  return parts[parts.length - 1] ?? path
-}
+export { leafName } from './format'

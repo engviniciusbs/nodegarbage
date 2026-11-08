@@ -371,3 +371,39 @@ func TestAIReportKeepItemsAreNotSelectable(t *testing.T) {
 		}
 	}
 }
+
+// A cited path that is not a folder of the scan says why: a known file, a
+// path under a scanned folder, or nothing at all.
+func TestAIReportMissingKinds(t *testing.T) {
+	a, _, _, _, p := newAIApp(t)
+	if err := a.RunAI(p.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	a.waitAI()
+	s, err := a.session(`C:\`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.tree.TopFiles = append(s.tree.TopFiles, tree.FileInfo{Path: `C:\proj\big.iso`, Size: 900})
+	a.aiMu.Lock()
+	a.lastReport.Items = append(a.lastReport.Items,
+		AIItemDTO{Path: `c:\PROJ\big.iso`, Verdict: "safe"},
+		AIItemDTO{Path: `C:\proj\small.txt`, Verdict: "safe"},
+		AIItemDTO{Path: `D:\nowhere\x`, Verdict: "safe"})
+	a.aiMu.Unlock()
+	rep, _ := a.GetAIReport()
+	want := map[string]string{`C:\other`: "", `c:\PROJ\big.iso`: "file", `C:\proj\small.txt`: "not_folder", `D:\nowhere\x`: "not_found"}
+	for _, it := range rep.Items {
+		w, ok := want[it.Path]
+		if !ok {
+			continue
+		}
+		if it.Missing != w || (w != "" && (it.Found || it.Selectable || it.Node != nil)) {
+			t.Errorf("%s: missing=%q found=%v selectable=%v want %q", it.Path, it.Missing, it.Found, it.Selectable, w)
+		}
+		delete(want, it.Path)
+	}
+	if len(want) != 0 {
+		t.Fatalf("items not in report: %v", want)
+	}
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { AIItemDTO } from '$lib/api'
-import { groupItems, groupOf, sumBytes, disabledReason, leafName } from './aireport'
+import { groupItems, groupOf, sumBytes, disabledReason, leafName, stricterVerdict, bulkSelectable } from './aireport'
 import { strings } from './strings'
 import { node } from '../test/fixtures'
 
@@ -26,6 +26,28 @@ describe('aireport helpers', () => {
     expect(disabledReason(item({ found: false, node: null as never }))).toBe(strings.ai.notFound)
     expect(disabledReason(item({ node: node({ action: 'manual' }) }))).toBe(strings.results.blocked.manual)
     expect(disabledReason(item({ selectable: false }))).toBe(strings.ai.notSelectable)
+  })
+
+  it('says when a cited path is a file or not a folder of the scan', () => {
+    const miss = (missing: string) => item({ found: false, node: null as never, missing })
+    expect(disabledReason(miss('file'))).toBe(strings.ai.missing.file)
+    expect(disabledReason(miss('not_folder'))).toBe(strings.ai.missing.not_folder)
+    expect(disabledReason(miss('not_found'))).toBe(strings.ai.notFound)
+    expect(disabledReason(miss(''))).toBe(strings.ai.notFound)
+  })
+
+  it('reports the effective verdict only when it is stricter than the AI one', () => {
+    expect(stricterVerdict(item({ verdict: 'safe', node: node({ verdict: 'caution' }) }))).toBe('caution')
+    expect(stricterVerdict(item({ verdict: 'safe', node: node({ verdict: 'keep' }) }))).toBe('keep')
+    expect(stricterVerdict(item({ verdict: 'caution', node: node({ verdict: 'caution' }) }))).toBe('')
+    expect(stricterVerdict(item({ verdict: 'caution', node: node({ verdict: 'safe' }) }))).toBe('')
+    expect(stricterVerdict(item({ found: false, node: null as never }))).toBe('')
+  })
+
+  it('bulk selection skips stricter-than-AI items; single selection does not', () => {
+    const stricter = item({ verdict: 'safe', node: node({ verdict: 'caution' }) })
+    expect(disabledReason(stricter)).toBe('')
+    expect(bulkSelectable([item({}), stricter]).length).toBe(1)
   })
 
   it('takes the last path component', () => {

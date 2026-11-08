@@ -203,4 +203,42 @@ describe('AIReport items: select & clean', () => {
     expect(details).not.toHaveAttribute('open')
     expect(within(details).getByRole('heading', { name: 'Resumo' })).toBeInTheDocument()
   })
+
+  it('shows a stricter effective verdict and leaves that item out of "Selecionar todos"', async () => {
+    m.GetAIReport.mockResolvedValue({
+      ...rich,
+      items: [
+        item('C:\\a\\cache', 'safe', { id: 1, size: 2 * GB }),
+        item('C:\\f\\build', 'safe', { id: 6, size: GB, verdict: 'caution', source: 'rule' }),
+      ],
+    } as never)
+    render(AIReport)
+    const row = (await screen.findByRole('checkbox', { name: strings.ai.selectItem('C:\\f\\build') })).closest('li')!
+    expect(within(row).getByText(strings.verdict.safe)).toBeInTheDocument()
+    const eff = within(row).getByTitle(strings.ai.effective)
+    expect(eff).toHaveTextContent(new RegExp(`${strings.verdict.caution}\\s*· ${strings.source.rule}`))
+    await userEvent.click(screen.getByRole('button', { name: strings.ai.selectAllSafe }))
+    expect([...selection.paths.keys()]).toEqual(['C:\\a\\cache'])
+    // still selectable one by one
+    await userEvent.click(screen.getByRole('checkbox', { name: strings.ai.selectItem('C:\\f\\build') }))
+    expect(selection.paths.has('C:\\f\\build')).toBe(true)
+  })
+
+  it('checks the box by the node path, the key used by the selection', async () => {
+    const it0 = item('c:\\a\\cache', 'safe', { id: 1, path: 'C:\\a\\cache' })
+    m.GetAIReport.mockResolvedValue({ ...rich, items: [it0] } as never)
+    render(AIReport)
+    const cb = await screen.findByRole('checkbox', { name: strings.ai.selectItem('c:\\a\\cache') })
+    // a selection made elsewhere (here: the bulk button) must show as checked
+    await userEvent.click(screen.getByRole('button', { name: strings.ai.selectAllSafe }))
+    expect(selection.paths.has('C:\\a\\cache')).toBe(true)
+    expect(cb).toBeChecked()
+  })
+
+  it('says when the AI cited a file instead of a folder', async () => {
+    m.GetAIReport.mockResolvedValue({ ...rich, items: [{ ...item('C:\\a\\big.iso', 'safe', null), missing: 'file' }] } as never)
+    render(AIReport)
+    expect(await screen.findByText(strings.ai.missing.file)).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: strings.ai.selectItem('C:\\a\\big.iso') })).toBeDisabled()
+  })
 })

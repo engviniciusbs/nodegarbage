@@ -112,9 +112,9 @@
     padding: 0 12px;
   }
 
-  /* Filtered view: an extra Local column after the name. */
+  /* Filtered view: one two-line Local column, no files column (the details panel has it). */
   .list-grid.list-grid-located {
-    grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) 96px 84px 132px;
+    grid-template-columns: 28px minmax(0, 1fr) 96px 132px;
   }
 
   @container (max-width: 520px) {
@@ -122,7 +122,7 @@
       grid-template-columns: 28px minmax(0, 1fr) 88px 128px;
     }
     .list-grid.list-grid-located {
-      grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) 88px 128px;
+      grid-template-columns: 28px minmax(0, 1fr) 88px 128px;
     }
     .list-grid > .col-files {
       display: none;

@@ -49,3 +49,9 @@ export function formatDuration(ms: number): string {
   if (m > 0) return sec > 0 ? `${m} min ${sec} s` : `${m} min`
   return `${sec} s`
 }
+
+/** Last component of a Windows path ("C:" for "C:\"). */
+export function leafName(path: string): string {
+  const parts = path.split(/[\\/]/).filter(Boolean)
+  return parts[parts.length - 1] ?? path
+}

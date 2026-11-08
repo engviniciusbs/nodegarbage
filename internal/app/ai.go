@@ -51,6 +51,10 @@ type AIItemDTO struct {
 	// Selectable mirrors what the UI may offer for cleaning (never keep,
 	// manual or link). PlanClean still validates everything again.
 	Selectable bool `json:"selectable"`
+	// Missing says why a cited path is not a folder of the scan: "file" (a
+	// known large file), "not_folder" (under a scanned folder, but not a
+	// folder of it) or "not_found"; "" when Found.
+	Missing string `json:"missing"`
 }
 
 type AIReportDTO struct {
@@ -502,13 +506,38 @@ func (a *App) reportView(rep *AIReportDTO) *AIReportDTO {
 	out := *rep
 	out.Items = make([]AIItemDTO, 0, len(rep.Items))
 	for _, it := range rep.Items {
-		it.Found, it.Node, it.Selectable = false, nil, false
+		it.Found, it.Node, it.Selectable, it.Missing = false, nil, false, ""
 		if s, id, ok := a.locate(it.Path); ok && id != s.tree.Root {
 			d := a.nodeDTO(s, id)
 			it.Found, it.Node = true, &d
 			it.Selectable = d.Verdict != string(rules.Keep) && d.Action != string(rules.ActionManual) && !underLink(s.tree, id)
+		} else {
+			it.Missing = a.missingKind(it.Path)
 		}
 		out.Items = append(out.Items, it)
 	}
 	return &out
+}
+
+// missingKind classifies a cited path that is not a folder node of any
+// session (see AIItemDTO.Missing). Only the in-memory trees are consulted.
+func (a *App) missingKind(path string) string {
+	np := rules.NormalizePath(path)
+	parent := ""
+	if i := strings.LastIndexByte(strings.TrimRight(path, `\/`), '\\'); i >= 0 {
+		parent = path[:i+1]
+	}
+	for _, s := range a.allSessions() {
+		for _, f := range s.tree.TopFiles {
+			if rules.NormalizePath(f.Path) == np {
+				return "file"
+			}
+		}
+	}
+	if parent != "" {
+		if _, _, ok := a.locate(parent); ok {
+			return "not_folder"
+		}
+	}
+	return "not_found"
 }

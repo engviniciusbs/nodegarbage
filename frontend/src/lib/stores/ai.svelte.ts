@@ -29,6 +29,8 @@ export const ai = $state({
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 let unsub: (() => void) | undefined
+/** Guards reloadReport: only the latest read (or a newer ai:done) may set the report. */
+let reportSeq = 0
 
 /** Subscribes to ai:done once. */
 export function initAIEvents(): void {
@@ -40,7 +42,10 @@ export function initAIEvents(): void {
       return
     }
     ai.error = ''
-    if (d?.report) ai.report = d.report
+    if (d?.report) {
+      reportSeq++ // a fresh analysis beats any reload still in flight
+      ai.report = d.report
+    }
   })
 }
 
@@ -112,9 +117,10 @@ export async function revealItem(path: string): Promise<void> {
 
 /** Re-reads the report so item sizes/found flags follow the last scan (e.g. after a cleaning). */
 export async function reloadReport(): Promise<void> {
+  const mine = ++reportSeq
   try {
     const rep = await GetAIReport()
-    if (rep) ai.report = rep
+    if (rep && mine === reportSeq) ai.report = rep
   } catch {
     /* keep the report we have */
   }

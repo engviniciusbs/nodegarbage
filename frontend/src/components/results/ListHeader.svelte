@@ -1,7 +1,7 @@
 <script lang="ts">
   import { strings } from '$lib/strings'
 
-  /** `located` adds the Local column of the filtered view. */
+  /** `located`: filtered view columns (checkbox | Local | Tamanho | Veredito). */
   let { located = false }: { located?: boolean } = $props()
 </script>
 
@@ -12,9 +12,8 @@
   class:list-grid-located={located}
 >
   <span></span>
-  <span>{strings.results.colName}</span>
-  {#if located}<span>{strings.results.colLocation}</span>{/if}
+  <span>{located ? strings.results.colLocation : strings.results.colName}</span>
   <span class="text-right">{strings.results.colSize}</span>
-  <span class="col-files text-right">{strings.results.colFiles}</span>
+  {#if !located}<span class="col-files text-right">{strings.results.colFiles}</span>{/if}
   <span>{strings.results.colVerdict}</span>
 </div>
