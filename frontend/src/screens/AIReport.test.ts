@@ -11,6 +11,10 @@ vi.mock('$lib/api', () => ({
   CancelAI: vi.fn(),
   LocatePath: vi.fn(),
   GetChildren: vi.fn(),
+  ListFiltered: vi.fn(),
+  PlanClean: vi.fn(),
+  ExecuteClean: vi.fn(),
+  CancelClean: vi.fn(),
   on: (ev: string, cb: (d: unknown) => void) => {
     handlers[ev] = cb
     return () => {}
@@ -22,7 +26,11 @@ import AIReport from './AIReport.svelte'
 import { route } from '$lib/route.svelte'
 import { results } from '$lib/stores/results.svelte'
 import { ai } from '$lib/stores/ai.svelte'
+import { selection, clear } from '$lib/stores/selection.svelte'
 import { node } from '../test/fixtures'
+import type { NodeDTO } from '$lib/api'
+import { formatBytes } from '$lib/format'
+import { strings } from '$lib/strings'
 
 const m = vi.mocked(api, true)
 const profile = { id: 'p1', name: 'Meu', kind: 'openai-compat', baseUrl: '', model: 'gpt-x', hasKey: true }
@@ -118,5 +126,81 @@ describe('AIReport screen', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Mostrar/ }))
     expect(await screen.findByText('item não encontrado na última varredura')).toBeInTheDocument()
     expect(route.current).toBe('ai')
+  })
+})
+
+describe('AIReport items: select & clean', () => {
+  const GB = 1024 ** 3
+  const item = (path: string, verdict: string, over: Partial<NodeDTO> | null, selectable = true) => ({
+    path,
+    verdict,
+    reason: `motivo ${path}`,
+    confidence: 0.8,
+    found: over !== null,
+    selectable: over !== null && selectable,
+    node: over === null ? null : node({ path, name: path.split('\\').pop(), source: 'ai', verdict, ...over }),
+  })
+  const rich = {
+    markdown: '# Resumo\n\ntexto',
+    createdAt: '2026-11-07T10:00:00Z',
+    profile: 'Meu',
+    model: 'gpt-x',
+    items: [
+      item('C:\\a\\cache', 'safe', { id: 1, size: 2 * GB }),
+      item('C:\\b\\tmp', 'safe', { id: 2, size: 1 * GB }),
+      item('C:\\c\\old', 'safe', null),
+      item('C:\\d\\proj', 'caution', { id: 4, size: 3 * GB }),
+      item('C:\\e\\docs', 'keep', { id: 5, size: GB, verdict: 'keep' }, false),
+    ],
+  }
+
+  beforeEach(() => {
+    clear()
+    m.GetAIReport.mockResolvedValue(rich as never)
+  })
+
+  it('shows profile/model, totals and the three groups with count and size', async () => {
+    render(AIReport)
+    expect(await screen.findByText(strings.ai.totals(formatBytes(3 * GB), formatBytes(3 * GB)))).toBeInTheDocument()
+    expect(screen.getByText(/Meu · gpt-x/)).toBeInTheDocument()
+    const safe = screen.getByRole('region', { name: strings.ai.groups.safe })
+    expect(within(safe).getByText(strings.ai.groupMeta(3, formatBytes(3 * GB)))).toBeInTheDocument()
+    expect(within(safe).getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getByRole('region', { name: strings.ai.groups.caution })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: strings.ai.groups.keep })).toBeInTheDocument()
+    // the AI reason is plain text
+    expect(screen.getByText('motivo C:\\a\\cache')).toBeInTheDocument()
+  })
+
+  it('never pre-selects; not-found and keep items cannot be selected', async () => {
+    render(AIReport)
+    await screen.findByText(strings.ai.totals(formatBytes(3 * GB), formatBytes(3 * GB)))
+    expect(selection.paths.size).toBe(0)
+    for (const cb of screen.getAllByRole('checkbox')) expect(cb).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: strings.ai.selectItem('C:\\c\\old') })).toBeDisabled()
+    expect(screen.getByText(strings.ai.notFound)).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: strings.ai.selectItem('C:\\e\\docs') })).toBeDisabled()
+    expect(screen.getByText(strings.results.blocked.keep)).toBeInTheDocument()
+  })
+
+  it('"Selecionar todos" selects only the selectable safe items; the footer cleans them', async () => {
+    render(AIReport)
+    await userEvent.click(await screen.findByRole('button', { name: strings.ai.selectAllSafe }))
+    expect([...selection.paths.keys()].sort()).toEqual(['C:\\a\\cache', 'C:\\b\\tmp'])
+    const size = formatBytes(3 * GB)
+    expect(screen.getByText(strings.results.selectedCount(2))).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: strings.clean.button(2, size) })).toBeEnabled()
+    await userEvent.click(screen.getByRole('checkbox', { name: strings.ai.selectItem('C:\\d\\proj') }))
+    expect(selection.paths.size).toBe(3)
+    await userEvent.click(screen.getByRole('button', { name: strings.results.clearSelection }))
+    expect(selection.paths.size).toBe(0)
+  })
+
+  it('keeps the full sanitized report in a collapsible section', async () => {
+    render(AIReport)
+    const summary = await screen.findByText(strings.ai.fullReport)
+    const details = summary.closest('details')!
+    expect(details).not.toHaveAttribute('open')
+    expect(within(details).getByRole('heading', { name: 'Resumo' })).toBeInTheDocument()
   })
 })

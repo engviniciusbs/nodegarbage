@@ -18,6 +18,11 @@ export function toggle(n: NodeDTO): void {
   else selection.paths.set(n.path, n)
 }
 
+/** Explicit "select all" click: adds every selectable node; never deselects. */
+export function selectAll(nodes: NodeDTO[]): void {
+  for (const n of nodes) if (!blockedReason(n) && !selection.paths.has(n.path)) selection.paths.set(n.path, n)
+}
+
 export function clear(): void {
   selection.paths.clear()
 }

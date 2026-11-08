@@ -109,3 +109,13 @@ export async function revealItem(path: string): Promise<void> {
     ai.revealErrors[path] = msg(e) || strings.ai.revealError
   }
 }
+
+/** Re-reads the report so item sizes/found flags follow the last scan (e.g. after a cleaning). */
+export async function reloadReport(): Promise<void> {
+  try {
+    const rep = await GetAIReport()
+    if (rep) ai.report = rep
+  } catch {
+    /* keep the report we have */
+  }
+}
